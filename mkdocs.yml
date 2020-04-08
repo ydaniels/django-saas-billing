@@ -1,0 +1,4 @@
+site_name: drf-saas-billing
+site_description: A simple flexible app that provides subscription and billing for django apps with cryptocurrency support
+repo_url: https://github.com/ydaniels/drf-saas-billing
+site_dir: html

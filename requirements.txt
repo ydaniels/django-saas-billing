@@ -1,0 +1,24 @@
+# Minimum Django and REST framework version
+Django>=2.0
+djangorestframework>=3.9
+
+# Test requirements
+pytest-django>=3.8.0
+pytest>=3.6
+pytest-cov
+flake8==2.4.0
+
+# wheel for PyPI installs
+wheel==0.24.0
+
+# MkDocs for documentation previews/deploys
+mkdocs==0.11.1
+
+
+
+
+
+
+django-cryptocurrency-payment
+-e git+https://github.com/ydaniels/drf-django-flexible-subscriptions.git@master#egg=subscriptions_api
+django-flexible-subscriptions

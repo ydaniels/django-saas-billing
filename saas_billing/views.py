@@ -69,9 +69,8 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
                     cost = 0
             else:
                 subscription.deactivate()
-        subscription = plan_cost.setup_user_subscription(request.user, active=False, no_multipe_subscription=True)
-        subscription = UserSubscriptionProxy.objects.get(pk=subscription.pk)
-
+        plan_cost.UserSubscriptionClass = UserSubscriptionProxy
+        subscription = plan_cost.setup_user_subscription(request.user, active=False, no_multipe_subscription=True, resuse=True)
         transaction = subscription.auto_activate_subscription(amount=cost)
         if transaction.amount <= 0:
             subscription.activate()

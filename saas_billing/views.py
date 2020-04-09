@@ -30,7 +30,6 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
     @action(methods=['post'], url_name='unsubscribe_user_crypto', detail=True, permission_classes=[IsAuthenticated])
     def unsubscribe_user_crypto(self, request, pk=None):
         subscription = self.get_object()
-        print(subscription.unused_daily_balance)
         if subscription.unused_daily_balance > 0:
             subscription.record_transaction(amount=-1 * subscription.unused_daily_balance)
         subscription.deactivate()

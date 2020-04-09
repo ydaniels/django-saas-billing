@@ -34,7 +34,6 @@ class UserSubscriptionProxy(UserSubscription):
             # Search if old transaction can pay for new subscription
             # print(SubscriptionTransaction.objects.filter(user=self.request.user, amount__lt=0))
             for prev_transaction in SubscriptionTransaction.objects.filter(user=self.user, amount__lt=0).all():
-                print(amount, prev_transaction.amount)
                 amount = float(amount) + float(prev_transaction.amount)
                 if amount < 0 or amount == 0:
                     prev_transaction.amount = amount

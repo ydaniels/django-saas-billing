@@ -17,7 +17,6 @@ class Manager():
         )
 
         for subscription in expired_subscriptions:
-            print(subscription.date_billing_end)
             subscription.deactivate()
             subscription.notify_expired()
 

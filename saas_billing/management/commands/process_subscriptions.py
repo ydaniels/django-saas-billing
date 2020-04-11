@@ -32,7 +32,7 @@ class Manager():
                                                                   transaction_date=subscription.date_billing_next)
             if transaction.amount <= 0:
                 subscription.activate(subscription_date=subscription.date_billing_next)
-                subscription.notify_new()
+                subscription.notify_activate(auto=True)
             else:
                 crypto = self.get_previous_transaction_crypto(subscription, )
                 transaction.create_payment(crypto or "BITCOIN")

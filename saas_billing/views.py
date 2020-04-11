@@ -33,6 +33,7 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
         if subscription.unused_daily_balance > 0:
             subscription.record_transaction(amount=-1 * subscription.unused_daily_balance)
         subscription.deactivate()
+        subscription.notify_deactivate()
         return Response({'status': True})
 
     @action(methods=['get'], url_name='get_active_subscription', detail=False, permission_classes=[IsAuthenticated])
@@ -66,13 +67,16 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
 
                     subscription.record_transaction(amount=cost)
                     cost = 0
+
             else:
                 subscription.deactivate()
+            subscription.notify_deactivate(activate_new=True)
         plan_cost.UserSubscriptionClass = UserSubscriptionProxy
         subscription = plan_cost.setup_user_subscription(request.user, active=False, no_multipe_subscription=True, resuse=True)
         transaction = subscription.auto_activate_subscription(amount=cost)
         if transaction.amount <= 0:
             subscription.activate()
+            subscription.notify_activate()
             data = {'subscription': str(subscription.pk), 'object_id': str(transaction.pk)}
         else:
             payment = transaction.create_payment(crypto)

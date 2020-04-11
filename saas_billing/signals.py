@@ -15,11 +15,11 @@ def save_profile(sender, instance, **kwargs):
     transaction = SubscriptionTransaction.objects.get(pk=instance.content_object.pk)
 
     if instance.status == CryptoCurrencyPayment.PAYMENT_CANCELLED:
-        subscription.notify_payment_error()
+        subscription.notify_payment_error(transaction=instance)
     if instance.status == CryptoCurrencyPayment.PAYMENT_PROCESSING:
-        subscription.notify_processing()
+        subscription.notify_processing(transaction=instance)
     if instance.status == CryptoCurrencyPayment.PAYMENT_NEW:
-        subscription.notify_new()
+        subscription.notify_new(transaction=instance)
     all_payment_paid = all(
         payment.status == CryptoCurrencyPayment.PAYMENT_PAID for payment in transaction.cryptocurrency_payments.all())
     if all_payment_paid:
@@ -27,4 +27,5 @@ def save_profile(sender, instance, **kwargs):
         if transaction.date_transaction > current_date:
             current_date = transaction.date_transaction
         subscription.activate(current_date)
-        subscription.notify_payment_success()
+        subscription.notify_payment_success(transaction=instance)
+        subscription.notify_activate()

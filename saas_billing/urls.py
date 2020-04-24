@@ -12,7 +12,7 @@ router.register('transactions', views.SubscriptionTransactionPaymentViewSet, bas
 router.register('subscriptions', views.UserSubscriptionCrypto, basename='subscriptions')
 
 urlpatterns = [
-    path('cryptocurrency', include(router.urls)),
+    path('billing', include(router.urls)),
 ]
 
 urlpatterns += router.urls

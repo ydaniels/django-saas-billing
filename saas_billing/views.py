@@ -41,8 +41,8 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
         try:
             subscription = UserSubscription.objects.get(user=self.request.user, active=True)
         except UserSubscription.DoesNotExist:
-            return Response({'subscription': None})
-        return Response({'subscription': UserSubscriptionSerializer(subscription).data})
+            return Response(None)
+        return Response(UserSubscriptionSerializer(subscription).data)
 
 
 class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):

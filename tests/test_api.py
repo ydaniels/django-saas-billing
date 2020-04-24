@@ -159,7 +159,7 @@ class BaseTest(APITestCase):
         subscription = basic_cost.setup_user_subscription(user=self.user, active=True)
         sub_url = reverse('saas_billing:subscriptions-get_active_subscription')
         r = self.client.get(sub_url)
-        self.assertEqual(r.data['subscription']['id'], str(subscription.pk))
+        self.assertEqual(r.data['id'], str(subscription.pk))
         sub_url = reverse('saas_billing:subscriptions-unsubscribe_user_crypto', kwargs={'pk': subscription.pk})
         r = self.client.post(sub_url)
         self.assertEqual(r.status_code, status.HTTP_200_OK)
@@ -167,7 +167,7 @@ class BaseTest(APITestCase):
         self.assertFalse(subscription.active)
         sub_url = reverse('saas_billing:subscriptions-get_active_subscription')
         r = self.client.get(sub_url)
-        self.assertIsNone(r.data['subscription'])
+        self.assertIsNone(r.data)
         transaction = SubscriptionTransaction.objects.get(subscription=basic_cost)
         self.assertEqual(float(transaction.amount), -98.56)
 

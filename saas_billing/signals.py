@@ -4,16 +4,11 @@ from cryptocurrency_payment.models import CryptoCurrencyPayment
 from django.dispatch import receiver
 from django.db.models.signals import post_save
 
-from subscriptions_api.models import UserSubscription
-from saas_billing.models import SubscriptionTransaction
-
 
 @receiver(post_save, sender=CryptoCurrencyPayment, dispatch_uid='update_user_subscription')
 def save_profile(sender, instance, **kwargs):
-    subscription = UserSubscription.objects.filter(subscription=instance.content_object.subscription.pk,
-                                                   user=instance.content_object.user).all().order_by('-id')[0]
-    transaction = SubscriptionTransaction.objects.get(pk=instance.content_object.pk)
-
+    transaction = instance.content_object
+    subscription = transaction.subscription
     if instance.status == CryptoCurrencyPayment.PAYMENT_CANCELLED:
         subscription.notify_payment_error(transaction=instance)
     if instance.status == CryptoCurrencyPayment.PAYMENT_PROCESSING:

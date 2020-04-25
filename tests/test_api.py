@@ -7,9 +7,9 @@ from rest_framework import status
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
-from subscriptions.models import SubscriptionPlan
-from subscriptions_api.models import PlanCost, UserSubscription
-from saas_billing.models import SubscriptionTransaction
+from subscriptions_api.models import PlanCost, SubscriptionPlan
+
+from saas_billing.models import SubscriptionTransaction, UserSubscription
 from saas_billing.management.commands.process_subscriptions import Manager
 from cryptocurrency_payment.models import CryptoCurrencyPayment
 
@@ -43,7 +43,7 @@ class BaseTest(APITestCase):
         self.client.force_authenticate(self.user)
         r = self.client.post(cost_url, data={"crypto": "Bitcoin"})
         self.assertEqual(r.status_code, status.HTTP_201_CREATED)
-        activated_transaction = SubscriptionTransaction.objects.get(pk=r.data['object_id'])
+        activated_transaction = SubscriptionTransaction.objects.get(pk=r.data['transaction'])
         subscription.refresh_from_db()
         self.assertEqual(float(activated_transaction.amount), 50.72)
         self.assertFalse(subscription.active)
@@ -62,17 +62,20 @@ class BaseTest(APITestCase):
         cost_url = reverse('saas_billing:plan-costs-subscribe_user_crypto', kwargs={'pk': self.cost.pk})
         self.client.force_authenticate(self.user)
         r = self.client.post(cost_url, data={"crypto": "Bitcoin"})
-        activated_transaction = SubscriptionTransaction.objects.get(pk=r.data['object_id'])
+        activated_transaction = SubscriptionTransaction.objects.get(pk=r.data['transaction'])
         subscription.refresh_from_db()
         self.assertEqual(float(activated_transaction.amount), 0)
         sub = UserSubscription.objects.get(user=self.user, active=True)
         self.assertNotEqual(sub.pk, subscription.pk)
-        transact = SubscriptionTransaction.objects.get(subscription=basic_cost)
-        self.assertEqual(float(transact.amount), -39.28)
+        transact = subscription.transactions.all()
+        self.assertEqual(float(transact[0].amount), -39.28)
 
     def test_subscription_amount_deducted_from_past_neg_transaction(self):
-        transaction = SubscriptionTransaction.objects.create(subscription_id=self.cost.pk, amount=-10,
-                                                             user_id=self.user.pk, date_transaction=timezone.now())
+        cost = self.create_plan_cost("Basic Plan", cost=0)
+        # Create a subscription cost with 0
+        subscription = cost.setup_user_subscription(self.user)
+        transaction = SubscriptionTransaction.objects.create(subscription=subscription, amount=-10,
+                                                             user=self.user, date_transaction=timezone.now())
         basic_cost = self.create_plan_cost("Basic Plan", cost=6)
         cost_url = reverse('saas_billing:plan-costs-subscribe_user_crypto', kwargs={'pk': basic_cost.pk})
 
@@ -80,7 +83,7 @@ class BaseTest(APITestCase):
 
         UserSubscription.objects.get(pk=r.data['subscription']).deactivate()
         self.assertEqual(r.status_code, status.HTTP_201_CREATED)
-        active_transaction = SubscriptionTransaction.objects.get(pk=r.data['object_id'])
+        active_transaction = SubscriptionTransaction.objects.get(pk=r.data['transaction'])
         transaction.refresh_from_db()
         self.assertEqual(float(transaction.amount), -4)
         self.assertEqual(active_transaction.amount, 0)
@@ -89,7 +92,7 @@ class BaseTest(APITestCase):
         self.client.force_authenticate(self.user)
         r = self.client.post(cost_url, data={"crypto": "Bitcoin"})
         self.assertEqual(r.status_code, status.HTTP_201_CREATED)
-        active_transaction = SubscriptionTransaction.objects.get(pk=r.data['object_id'])
+        active_transaction = SubscriptionTransaction.objects.get(pk=r.data['transaction'])
         transaction.refresh_from_db()
         self.assertEqual(float(transaction.amount), 0)
         self.assertEqual(active_transaction.amount, 2)
@@ -99,8 +102,8 @@ class BaseTest(APITestCase):
         basic_cost = self.create_plan_cost("Basic Plan", cost=50)
         cost_url = reverse('saas_billing:plan-costs-subscribe_user_crypto', kwargs={'pk': basic_cost.pk})
         r = self.client.post(cost_url, data={"crypto": "Bitcoin"})
-        active_transaction = SubscriptionTransaction.objects.get(pk=r.data['object_id'])
-        sub = UserSubscription.objects.get(subscription=active_transaction.subscription.pk)
+        active_transaction = SubscriptionTransaction.objects.get(pk=r.data['transaction'])
+        sub = active_transaction.subscription
         self.assertFalse(sub.active)
         self.assertEqual(active_transaction.amount, 50)
         for pay in active_transaction.cryptocurrency_payments.all():
@@ -109,13 +112,26 @@ class BaseTest(APITestCase):
         sub.refresh_from_db()
         self.assertTrue(sub.active)
 
+    def test_create_subscription_without_payment(self):
+        basic_cost = self.create_plan_cost("Basic Plan", cost=50)
+        cost_url = reverse('saas_billing:plan-costs-subscribe_user_crypto', kwargs={'pk': basic_cost.pk})
+        r = self.client.post(cost_url, data={})
+        self.assertIsNone(r.data['payment'])
+        transaction = SubscriptionTransaction.objects.get(pk=r.data['transaction'])
+        self.assertEqual(transaction.cryptocurrency_payments.count(), 0)
+        transact_url = reverse('saas_billing:transactions-create_crypto_payment', kwargs={'pk': transaction.pk})
+
+        r = self.client.post(transact_url, data={'crypto': 'Bitcoin'})
+        transaction.refresh_from_db()
+        self.assertEqual(str(transaction.cryptocurrency_payments.all()[0].id), r.data['id'])
+
     @patch('saas_billing.signals.save_profile')
     def test_subscription_activated_with_future_transact_date(self, signal):
         basic_cost = self.create_plan_cost("Basic Plan", cost=50)
         cost_url = reverse('saas_billing:plan-costs-subscribe_user_crypto', kwargs={'pk': basic_cost.pk})
         r = self.client.post(cost_url, data={"crypto": "Bitcoin"})
-        active_transaction = SubscriptionTransaction.objects.get(pk=r.data['object_id'])
-        sub = UserSubscription.objects.get(subscription=active_transaction.subscription.pk)
+        active_transaction = SubscriptionTransaction.objects.get(pk=r.data['transaction'])
+        sub = active_transaction.subscription
         self.assertFalse(sub.active)
         self.assertEqual(active_transaction.amount, 50)
         future_date = timezone.now() + timedelta(days=15)
@@ -133,8 +149,8 @@ class BaseTest(APITestCase):
         basic_cost = self.create_plan_cost("Basic Plan", cost=50)
         cost_url = reverse('saas_billing:plan-costs-subscribe_user_crypto', kwargs={'pk': basic_cost.pk})
         r = self.client.post(cost_url, data={"crypto": "Bitcoin"})
-        active_transaction = SubscriptionTransaction.objects.get(pk=r.data['object_id'])
-        sub = UserSubscription.objects.get(subscription=active_transaction.subscription.pk)
+        active_transaction = SubscriptionTransaction.objects.get(pk=r.data['transaction'])
+        sub = active_transaction.subscription
         self.assertFalse(sub.active)
         self.assertEqual(active_transaction.amount, 50)
         for pay in active_transaction.cryptocurrency_payments.all():
@@ -149,7 +165,7 @@ class BaseTest(APITestCase):
         basic_cost = self.create_plan_cost("Basic Plan", cost=50)
         cost_url = reverse('saas_billing:plan-costs-subscribe_user_crypto', kwargs={'pk': basic_cost.pk})
         r = self.client.post(cost_url, data={"crypto": "Bitcoin"})
-        transact_url = reverse('saas_billing:transactions-detail', kwargs={'pk': r.data['object_id']})
+        transact_url = reverse('saas_billing:transactions-detail', kwargs={'pk': r.data['transaction']})
         r = self.client.get(transact_url)
         self.assertEqual(r.status_code, status.HTTP_200_OK)
         self.assertEqual(len(r.data['cryptocurrency_payments']), 1)
@@ -168,7 +184,7 @@ class BaseTest(APITestCase):
         sub_url = reverse('saas_billing:subscriptions-get_active_subscription')
         r = self.client.get(sub_url)
         self.assertIsNone(r.data)
-        transaction = SubscriptionTransaction.objects.get(subscription=basic_cost)
+        transaction = subscription.transactions.all()[0]
         self.assertEqual(float(transaction.amount), -98.56)
 
     def test_transaction_generated_for_expired_sub(self):
@@ -188,14 +204,13 @@ class BaseTest(APITestCase):
         subscription = basic_cost.setup_user_subscription(user=self.user, active=True,
                                                           subscription_date=subsription_date)
         self.assertTrue(subscription.active)
-        print(subscription.date_billing_next)
         manager = Manager()
         manager.process_one_week_due_subscriptions(timezone.now())
 
         subscription.refresh_from_db()
         self.assertTrue(subscription.active)
-        self.assertTrue(subscription.cancelled)
-        transaction = SubscriptionTransaction.objects.get(subscription=basic_cost)
+        self.assertTrue(subscription.due)
+        transaction = subscription.transactions.all()[0]
         self.assertEqual(float(transaction.amount), 100)
         self.assertEqual(transaction.date_transaction, subscription.date_billing_next)
 

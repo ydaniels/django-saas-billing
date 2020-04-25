@@ -21,4 +21,3 @@ mkdocs==0.11.1
 
 django-cryptocurrency-payment
 -e git+https://github.com/ydaniels/drf-django-flexible-subscriptions.git@master#egg=subscriptions_api
-django-flexible-subscriptions

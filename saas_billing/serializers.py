@@ -13,7 +13,7 @@ class CryptoCurrencyPaymentSerializer(serializers.ModelSerializer):
 class SubscriptionTransactionSerializerPayment(serializers.ModelSerializer):
     """SubscriptionTransaction serializer"""
 
-    cryptocurrency_payments = CryptoCurrencyPaymentSerializer(many=True)
+    cryptocurrency_payments = CryptoCurrencyPaymentSerializer(many=True, read_only=True)
 
     class Meta:
         model = SubscriptionTransaction

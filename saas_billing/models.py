@@ -1,7 +1,25 @@
 from django.contrib.contenttypes.fields import GenericRelation
-from subscriptions_api.base_models import BaseSubscriptionTransaction, BaseUserSubscription
+from subscriptions_api.base_models import BaseSubscriptionTransaction
 from cryptocurrency_payment.models import CryptoCurrencyPayment
 from cryptocurrency_payment.models import create_new_payment
+
+
+def auto_activate_subscription(subscription, amount, transaction_date=None):
+    if amount > 0:
+        # Search if old transaction can pay for new subscription
+        for prev_transaction in subscription.user.subscription_transactions.filter(amount__lt=0).all():
+            amount = float(amount) + float(prev_transaction.amount)
+            if amount < 0 or amount == 0:
+                prev_transaction.amount = amount
+                prev_transaction.save()
+                amount = 0
+            else:
+                prev_transaction.amount = 0
+                prev_transaction.save()
+    else:
+        amount = 0
+    transaction = subscription.record_transaction(amount=amount, transaction_date=transaction_date)
+    return transaction
 
 
 class SubscriptionTransaction(BaseSubscriptionTransaction):
@@ -17,30 +35,3 @@ class SubscriptionTransaction(BaseSubscriptionTransaction):
                                      payment_description=plan_cost.plan.plan_description,
                                      related_object=self, user=self.user)
         return payment
-
-
-class UserSubscription(BaseUserSubscription):
-
-    def auto_activate_subscription(self, amount, transaction_date=None):
-        if amount > 0:
-            # Search if old transaction can pay for new subscription
-            # print(SubscriptionTransaction.objects.filter(user=self.request.user, amount__lt=0))
-            print(self.user)
-            print(self.user.subscription_transactions.filter(amount__lt=0).all())
-            print(self.user.subscription_transactions.all())
-            for prev_transaction in self.user.subscription_transactions.filter(amount__lt=0).all():
-                print(prev_transaction)
-                print(prev_transaction)
-                print(prev_transaction)
-                amount = float(amount) + float(prev_transaction.amount)
-                if amount < 0 or amount == 0:
-                    prev_transaction.amount = amount
-                    prev_transaction.save()
-                    amount = 0
-                else:
-                    prev_transaction.amount = 0
-                    prev_transaction.save()
-        else:
-            amount = 0
-        transaction = self.record_transaction(amount=amount, transaction_date=transaction_date)
-        return transaction

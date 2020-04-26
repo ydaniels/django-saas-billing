@@ -7,9 +7,9 @@ from rest_framework import status
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
-from subscriptions_api.models import PlanCost, SubscriptionPlan
+from subscriptions_api.models import PlanCost, SubscriptionPlan, UserSubscription
 
-from saas_billing.models import SubscriptionTransaction, UserSubscription
+from saas_billing.models import SubscriptionTransaction
 from saas_billing.management.commands.process_subscriptions import Manager
 from cryptocurrency_payment.models import CryptoCurrencyPayment
 

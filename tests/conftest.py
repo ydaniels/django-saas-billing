@@ -64,8 +64,7 @@ def pytest_configure():
             },
         },
         EMAIL_BACKEND='django.core.mail.backends.dummy.EmailBackend',
-        SUBSCRIPTIONS_API_SUBSCRIPTIONTRANSACTION_MODEL='saas_billing.SubscriptionTransaction',
-        SUBSCRIPTIONS_API_USERSUBSCRIPTION_MODEL = 'saas_billing.UserSubscription'
+        SUBSCRIPTIONS_API_SUBSCRIPTIONTRANSACTION_MODEL='saas_billing.SubscriptionTransaction'
     )
 
     try:

@@ -2,7 +2,8 @@
 from django.db.models import Q
 from django.utils import timezone
 from datetime import timedelta
-from saas_billing.models import UserSubscription
+from subscriptions_api.models import UserSubscription
+from saas_billing.models import auto_activate_subscription
 
 
 class Manager():
@@ -26,8 +27,8 @@ class Manager():
         )
         for subscription in due_subscriptions:
 
-            transaction = subscription.auto_activate_subscription(amount=subscription.plan_cost.cost,
-                                                                  transaction_date=subscription.date_billing_next)
+            transaction = auto_activate_subscription(subscription, amount=subscription.plan_cost.cost,
+                                                     transaction_date=subscription.date_billing_next)
             if transaction.amount <= 0:
                 subscription.activate(subscription_date=subscription.date_billing_next)
                 subscription.notify_activate(auto=True)

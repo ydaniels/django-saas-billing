@@ -6,13 +6,14 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.decorators import action
 from subscriptions_api.views import PlanCostViewSet, UserSubscriptionViewSet
+from subscriptions_api.models import UserSubscription
 from subscriptions_api.serializers import UserSubscriptionSerializer
 
 from cryptocurrency_payment.models import CryptoCurrencyPayment
 
 from saas_billing.serializers import CryptoCurrencyPaymentSerializer, SubscriptionTransactionSerializerPayment
 
-from saas_billing.models import SubscriptionTransaction, UserSubscription
+from saas_billing.models import SubscriptionTransaction, auto_activate_subscription
 
 
 class SubscriptionTransactionPaymentViewSet(ReadOnlyModelViewSet):
@@ -85,7 +86,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
             subscription.notify_deactivate(activate_new=True)
         subscription = plan_cost.setup_user_subscription(request.user, active=False, no_multipe_subscription=True,
                                                          resuse=True)
-        transaction = subscription.auto_activate_subscription(amount=cost)
+        transaction = auto_activate_subscription(subscription, amount=cost)
         data = {'subscription': str(subscription.pk), 'transaction': str(transaction.pk), 'payment': None}
         if transaction.amount <= 0:
             subscription.activate()

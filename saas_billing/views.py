@@ -69,7 +69,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         crypto = self.request.data.get('crypto')
         unpaid_count = CryptoCurrencyPayment.objects.filter(user=self.request.user).exclude(status=CryptoCurrencyPayment.PAYMENT_PAID).count()
         if unpaid_count > 0:
-            return Response({'detail': 'You cannot subscribe for a new plan now you have unpaid trnasactions'}, status=HTTP_400_BAD_REQUEST)
+            return Response({'detail': 'You cannot subscribe for a new plan if you have unpaid bitcoin transactions'}, status=HTTP_400_BAD_REQUEST)
         active_subscriptions = UserSubscription.objects.filter(user=request.user, active=True).all()
         for subscription in active_subscriptions:
             unused_balance = subscription.unused_daily_balance

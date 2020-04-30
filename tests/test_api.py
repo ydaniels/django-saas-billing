@@ -70,6 +70,14 @@ class BaseTest(APITestCase):
         transact = subscription.transactions.all()
         self.assertEqual(float(transact[0].amount), -39.28)
 
+    def test_cannot_create_new_subscription_with_unpaid_transaction(self):
+        basic_cost = self.create_plan_cost("Basic Plan", cost=50)
+        cost_url = reverse('saas_billing:plan-costs-subscribe_user_crypto', kwargs={'pk': basic_cost.pk})
+        r = self.client.post(cost_url, data={"crypto": "Bitcoin"})
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        r = self.client.post(cost_url, data={"crypto": "Bitcoin"})
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_subscription_amount_deducted_from_past_neg_transaction(self):
         cost = self.create_plan_cost("Basic Plan", cost=0)
         # Create a subscription cost with 0
@@ -87,10 +95,11 @@ class BaseTest(APITestCase):
         transaction.refresh_from_db()
         self.assertEqual(float(transaction.amount), -4)
         self.assertEqual(active_transaction.amount, 0)
-
+        CryptoCurrencyPayment.objects.filter(user=self.user).update(status=CryptoCurrencyPayment.PAYMENT_PAID)
         cost_url = reverse('saas_billing:plan-costs-subscribe_user_crypto', kwargs={'pk': basic_cost.pk})
         self.client.force_authenticate(self.user)
         r = self.client.post(cost_url, data={"crypto": "Bitcoin"})
+
         self.assertEqual(r.status_code, status.HTTP_201_CREATED)
         active_transaction = SubscriptionTransaction.objects.get(pk=r.data['transaction'])
         transaction.refresh_from_db()

@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework.response import Response
-from rest_framework.status import HTTP_201_CREATED
+from rest_framework.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST
 from rest_framework.decorators import action
 from subscriptions_api.views import PlanCostViewSet, UserSubscriptionViewSet
 from subscriptions_api.models import UserSubscription
@@ -67,6 +67,9 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         # Get old subscription
         cost = plan_cost.cost
         crypto = self.request.data.get('crypto')
+        unpaid_count = CryptoCurrencyPayment.objects.filter(user=self.request.user).exclude(status=CryptoCurrencyPayment.PAYMENT_PAID).count()
+        if unpaid_count > 0:
+            return Response({'detail': 'You cannot subscribe for a new plan now you have unpaid trnasactions'}, status=HTTP_400_BAD_REQUEST)
         active_subscriptions = UserSubscription.objects.filter(user=request.user, active=True).all()
         for subscription in active_subscriptions:
             unused_balance = subscription.unused_daily_balance

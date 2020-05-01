@@ -185,7 +185,7 @@ class BaseTest(APITestCase):
         sub_url = reverse('saas_billing:subscriptions-get_active_subscription')
         r = self.client.get(sub_url)
         self.assertEqual(r.data['id'], str(subscription.pk))
-        sub_url = reverse('saas_billing:subscriptions-unsubscribe_user_crypto', kwargs={'pk': subscription.pk})
+        sub_url = reverse('saas_billing:subscriptions-unsubscribe_user', kwargs={'pk': subscription.pk})
         r = self.client.post(sub_url)
         self.assertEqual(r.status_code, status.HTTP_200_OK)
         subscription.refresh_from_db()

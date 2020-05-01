@@ -36,8 +36,8 @@ class SubscriptionTransactionPaymentViewSet(ReadOnlyModelViewSet):
 
 
 class UserSubscriptionCrypto(UserSubscriptionViewSet):
-    @action(methods=['post'], url_name='unsubscribe_user_crypto', detail=True, permission_classes=[IsAuthenticated])
-    def unsubscribe_user_crypto(self, request, pk=None):
+    @action(methods=['post'], url_name='unsubscribe_user', detail=True, permission_classes=[IsAuthenticated])
+    def unsubscribe_user(self, request, pk=None):
         subscription = self.get_object()
         if subscription.unused_daily_balance > 0:
             subscription.record_transaction(amount=-1 * subscription.unused_daily_balance)

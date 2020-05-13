@@ -27,7 +27,7 @@ class SubscriptionTransactionPaymentViewSet(ReadOnlyModelViewSet):
 
     @action(methods=['post'], url_name='create_crypto_payment', detail=True, permission_classes=[IsAuthenticated])
     def create_crypto_payment(self, request, pk=None):
-        crypto = self.request.data['crypto']
+        crypto = self.request.data.get('crypto') or 'BITCOIN'
         transaction = self.get_object()
         payment = transaction.create_payment(crypto.upper())
         serialized_payment = CryptoCurrencyPaymentSerializer(payment)

@@ -28,8 +28,7 @@ class SubscriptionTransaction(BaseSubscriptionTransaction):
     def create_payment(self, crypto_payment):
         plan_cost = self.subscription.plan_cost
 
-        payment_title = '{} {} {}'.format(plan_cost.recurrence_period, plan_cost.recurrence_unit,
-                                          plan_cost.plan.plan_name)
+        payment_title = '{} {}'.format(plan_cost.plan.plan_name, plan_cost.display_billing_frequency_text)
         payment = create_new_payment(crypto_payment, fiat_amount=self.amount, fiat_currency='USD',
                                      payment_title=payment_title,
                                      payment_description=plan_cost.plan.plan_description,

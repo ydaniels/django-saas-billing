@@ -1,9 +1,12 @@
 from django.utils import timezone
+from django.db.models import ProtectedError
+from django.dispatch import receiver
+from django.db.models.signals import post_save, pre_delete
 
 from cryptocurrency_payment.models import CryptoCurrencyPayment
-from django.dispatch import receiver
-from django.db.models.signals import post_save
 
+from saas_billing.models import StripeSubscriptionPlan, StripeSubscriptionPlanCost
+from saas_billing.provider import stripe, paypal
 
 @receiver(post_save, sender=CryptoCurrencyPayment, dispatch_uid='update_user_subscription')
 def save_profile(sender, instance, **kwargs):
@@ -24,3 +27,22 @@ def save_profile(sender, instance, **kwargs):
         subscription.activate(current_date)
         subscription.notify_payment_success(transaction=instance)
         subscription.notify_activate()
+
+
+@receiver(pre_delete, sender=StripeSubscriptionPlan)
+def delete_stripe_subscription_plan_hook(sender, instance, using, **kwargs):
+    if instance.plan_ref:
+        obj = stripe.Product.delete(instance.plan_ref)
+        if obj.deleted is not True:
+            raise ProtectedError
+
+@receiver(pre_delete, sender=StripeSubscriptionPlanCost)
+def delete_stripe_plan_cost_hook(sender, instance, using, **kwargs):
+    if instance.cost_ref:
+        obj = stripe.Product.delete(instance.cost_ref)
+        if obj.deleted is not True:
+            raise ProtectedError
+
+def deactivate_paypal_plan_cost(sender, instance, using, **kwargs):
+    if instance.cost_ref:
+        paypal.deactivate(instance.cost_ref)

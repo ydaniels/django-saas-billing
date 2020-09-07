@@ -1,6 +1,6 @@
 # Create your views here.
 from rest_framework.permissions import IsAuthenticated
-
+from django.apps import AppConfig
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST
@@ -12,7 +12,7 @@ from subscriptions_api.serializers import UserSubscriptionSerializer
 from cryptocurrency_payment.models import CryptoCurrencyPayment
 
 from saas_billing.serializers import CryptoCurrencyPaymentSerializer, SubscriptionTransactionSerializerPayment
-
+from saas_billing.app_settings import SETTINGS
 from saas_billing.models import SubscriptionTransaction, auto_activate_subscription
 
 
@@ -100,6 +100,14 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
             data['payment'] = serialized_payment.data['id']
         return Response(data, status=HTTP_201_CREATED)
 
+    @action(methods=['get'], url_name='get_gateway_cost', detail=True, permission_classes=[IsAuthenticated])
+    def get_gateway_cost(self):
+        cost = self.get_object()
+        gateway = self.request.data.get('gateway')
+        cost_model_str = SETTINGS['billing_models'][gateway]['COST']
+        Model = AppConfig.get_model(cost_model_str)
+        external_cost = Model.objects.get(cost=cost)
+        return Response({'id': external_cost.cost_ref})
 
 class CryptoCurrencyPaymentViewset(ReadOnlyModelViewSet):
     serializer_class = CryptoCurrencyPaymentSerializer

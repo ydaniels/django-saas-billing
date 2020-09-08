@@ -35,8 +35,7 @@ class GatewayTest(APITestCase):
         self.assertEqual(res['id'], self.paypal_cost.cost_ref)
         self.cost.cost = 9.99
         self.cost.save()
-        res = self.paypal_cost.create_or_update()
-        raise
+        self.paypal_cost.create_or_update()
 
     def test_plan_cost_deactivate_activate(self):
         self.paypal_plan.create_or_update()

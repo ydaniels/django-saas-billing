@@ -88,6 +88,9 @@ class StripeSubscriptionPlanCost(models.Model):
         )
         return session.id
 
+    def get_external_ref(self, user):
+        session_id = self.pre_process_subscription(user)
+        return {'session_id': session_id, 'ref': self.cost_ref}
 
 class PaypalSubscriptionPlan(models.Model):
     plan = models.OneToOneField(SubscriptionPlan, on_delete=models.CASCADE, unique=True,
@@ -148,6 +151,9 @@ class PaypalSubscriptionPlanCost(models.Model):
     def deactivate(self):
         if self.cost_ref:
             return paypal.deactivate(self.cost_ref)
+
+    def get_external_ref(self, user):
+        return self.cost_ref
 
     def __str__(self):
         return '{}|{}|{}|{}'.format(self.cost.plan.plan, self.cost.recurrence_unit, self.cost.recurrence_period,

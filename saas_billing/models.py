@@ -95,13 +95,13 @@ class PaypalSubscriptionPlan(models.Model):
     def create_or_update(self):
         if not self.plan_ref:
             res = paypal.create_or_update_product(name=self.plan.plan_name, description=self.plan.plan_description)
-            print(res)
             self.plan_ref = res['id']
             self.save()
         else:
             res = paypal.create_or_update_product(self.plan_ref, name=self.plan.plan_name,
                                             description=self.plan.plan_description)
         return res
+
     def __str__(self):
         return '{}|{}'.format(self.plan.plan_name, self.plan_ref)
 
@@ -112,15 +112,16 @@ class PaypalSubscriptionPlanCost(models.Model):
 
     def create_or_update(self):
         if not self.cost_ref:
-            res = paypal.create_or_update_product_plan(product_id=self.cost.plan.paypal_subscription_plan.plan_ref,
+            res = paypal.create_or_update_product_plan(product_id=self.cost.plan.paypal_subscription_plan.plan_ref, name=str(self.cost),
                                                        interval_unit=self.cost.get_recurrence_unit_display(),
                                                        interval_count=self.cost.recurrence_period,
-                                                       amount=self.cost.cost, currency="usd", include_trial=True)
-
+                                                       amount=self.cost.cost, currency="usd", include_trial=False)
+            print(res)
             self.cost_ref = res['id']
             self.save()
         else:
-            paypal.update_plan_pricing(self.cost_ref, amount=self.cost.cost, currency="usd")
+            res = paypal.update_plan_pricing(self.cost_ref, amount=self.cost.cost, currency="usd")
+        return res
 
     def activate(self):
         if self.cost_ref:

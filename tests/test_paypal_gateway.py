@@ -26,3 +26,8 @@ class GatewayTest(APITestCase):
         self.paypal_plan.refresh_from_db()
         self.assertEqual(res['id'], self.paypal_plan.plan_ref)
 
+    def test_paypal_subscription_plan_cost(self):
+        self.paypal_plan.create_or_update()
+        res = self.paypal_cost.create_or_update()
+        self.cost.refresh_from_db()
+        self.assertEqual(res['id'], self.paypal_cost.cost_ref)

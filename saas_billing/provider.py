@@ -16,6 +16,7 @@ class PayPalClient():
             print(res.json())
             token = res.json()['access_token']
             self.s.headers.update({'Authorization': 'Bearer %s' % token})
+
     def create_or_update_product(self, product_id=None, name='', description='', sub_type="SERVICE",
                                  category="SOFTWARE"):
         url = '{}/catalogs/products'.format(self.base_url)
@@ -25,8 +26,6 @@ class PayPalClient():
             "type": sub_type,
             "category": category
         }
-        print(self.s.headers)
-        print(product_id)
         if product_id:
             data.pop("name")
             url = '{}/{}'.format(url, product_id)
@@ -35,7 +34,7 @@ class PayPalClient():
             res = self.s.post(url, json=data)
         return res.json()
 
-    def create_or_update_product_plan(self, product_id, plan_id=None, name='', description='', interval_unit='MONTH',
+    def create_or_update_product_plan(self, product_id, plan_id=None, name='', description=None, interval_unit='MONTH',
                                       interval_count=1, amount=0, currency='USD', include_trial=False,
                                       trial_interval="WEEK", trial_interval_count=1):
 
@@ -56,7 +55,7 @@ class PayPalClient():
                     "pricing_scheme": {
                         "fixed_price": {
                             "value": amount,
-                            "currency_code": "USD"
+                            "currency_code": currency.upper()
                         }
                     }
                 }
@@ -64,8 +63,8 @@ class PayPalClient():
             "payment_preferences": {
                 "auto_bill_outstanding": True,
                 "setup_fee": {
-                    "value": amount,
-                    "currency_code": currency
+                    "value": 0,
+                    "currency_code": currency.upper()
                 },
                 "setup_fee_failure_action": "CONTINUE",
                 "payment_failure_threshold": 3
@@ -75,6 +74,7 @@ class PayPalClient():
                 "inclusive": False
             }
         }
+        print(data)
         if include_trial:
             data["billing_cycles"].append({
                 "frequency": {
@@ -90,9 +90,9 @@ class PayPalClient():
             data = {
                 "description": description,
             }
-            res = self.s.patch(url, data)
+            res = self.s.patch(url, json=data)
         else:
-            res = self.s.post(url, data)
+            res = self.s.post(url, json=data)
         return res.json()
 
     def activate(self, plan_id):
@@ -120,5 +120,5 @@ class PayPalClient():
             }
             ]
         }
-        res = self.s.post(url, data)
+        res = self.s.post(url, json=data)
         return res.json()

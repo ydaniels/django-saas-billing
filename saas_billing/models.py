@@ -114,11 +114,26 @@ class PaypalSubscriptionPlanCost(models.Model):
 
     def create_or_update(self):
         if not self.cost_ref:
+            trial = True
+            if self.cost.plan.trial_period > 0 and self.cost.plan.trial_period < 7:
+                trial_interval_unit = 'DAY'
+                trial_interval_count = self.cost.plan.trial_period
+            elif self.cost.plan.trial_period > 6 and self.cost.plan.trial_period < 30:
+                trial_interval_unit = 'WEEK'
+                trial_interval_count = int(self.cost.plan.trial_period/ 7)
+            elif self.cost.plan.trial_period > 29:
+                trial_interval_unit = 'MONTH'
+                trial_interval_count = int(self.cost.plan.trial_period / 30)
+            else:
+                trial_interval_unit = None
+                trial_interval_count = 0
+                trial = False
+
             res = paypal.create_or_update_product_plan(product_id=self.cost.plan.paypal_subscription_plan.plan_ref,
                                                        name=str(self.cost),
                                                        interval_unit=self.cost.get_recurrence_unit_display(),
                                                        interval_count=self.cost.recurrence_period,
-                                                       amount=self.cost.cost, currency="usd", include_trial=False)
+                                                       amount=self.cost.cost, currency="usd", include_trial=trial, trial_interval_unit = trial_interval_unit, trial_interval_count=trial_interval_count)
             print(res)
             self.cost_ref = res['id']
             self.save()

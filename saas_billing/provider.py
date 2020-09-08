@@ -36,7 +36,7 @@ class PayPalClient():
 
     def create_or_update_product_plan(self, product_id, plan_id=None, name='', description=None, interval_unit='MONTH',
                                       interval_count=1, amount=0, currency='USD', include_trial=False,
-                                      trial_interval="WEEK", trial_interval_count=1):
+                                      trial_interval_unit="WEEK", trial_interval_count=1):
 
         url = '{}/billing/plans'.format(self.base_url)
         data = {
@@ -44,21 +44,6 @@ class PayPalClient():
             "name": name,
             "description": description,
             "billing_cycles": [
-                {
-                    "frequency": {
-                        "interval_unit": interval_unit,
-                        "interval_count": interval_count
-                    },
-                    "tenure_type": "REGULAR",
-                    "sequence": 1,
-                    "total_cycles": 0,
-                    "pricing_scheme": {
-                        "fixed_price": {
-                            "value": amount,
-                            "currency_code": currency.upper()
-                        }
-                    }
-                }
             ],
             "payment_preferences": {
                 "auto_bill_outstanding": True,
@@ -74,17 +59,48 @@ class PayPalClient():
                 "inclusive": False
             }
         }
-        print(data)
         if include_trial:
             data["billing_cycles"].append({
                 "frequency": {
-                    "interval_unit": trial_interval,
+                    "interval_unit": trial_interval_unit,
                     "interval_count": trial_interval_count
                 },
                 "tenure_type": "TRIAL",
-                "sequence": 2,
+                "sequence": 1,
                 "total_cycles": 1
             }, )
+            data["billing_cycles"].append( {
+                    "frequency": {
+                        "interval_unit": interval_unit,
+                        "interval_count": interval_count
+                    },
+                    "tenure_type": "REGULAR",
+                    "sequence": 2,
+                    "total_cycles": 0,
+                    "pricing_scheme": {
+                        "fixed_price": {
+                            "value": amount,
+                            "currency_code": currency.upper()
+                        }
+                    }
+                })
+        else:
+            data["billing_cycles"].append({
+                "frequency": {
+                    "interval_unit": interval_unit,
+                    "interval_count": interval_count
+                },
+                "tenure_type": "REGULAR",
+                "sequence": 1,
+                "total_cycles": 0,
+                "pricing_scheme": {
+                    "fixed_price": {
+                        "value": amount,
+                        "currency_code": currency.upper()
+                    }
+                }
+            })
+        print(data)
         if plan_id:
             url = '{}/billing/plans/{}'.format(self.base_url, plan_id)
             data = {

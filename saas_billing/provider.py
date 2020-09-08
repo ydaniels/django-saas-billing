@@ -1,23 +1,23 @@
 import requests
-import stripe
-from django.conf import settings
-
-stripe.api_key = settings.STRIPE_PUBLISHABLE_KEY
-
 
 class PayPalClient():
 
-    def __init__(self, key, secret, env='development'):
+    def __init__(self, key, secret, token=None, env='development'):
         if env != 'live':
-             self.base_url = 'https://api.sandbox.paypal.com/v1'
-        else:
             self.base_url = 'https://api.sandbox.paypal.com/v1'
+        else:
+            self.base_url = 'https://api.paypal.com/v1'
 
         self.s = requests.Session()
-        self.s.headers.update({'Basic': '{}:{}'.format(key, secret)})
-
-
-    def create_or_update_product(self, product_id=None, name='', description='', sub_type="SERVICE", category="SOFTWARE"):
+        if token:
+            self.s.headers.update({'Authorization': 'Bearer %s'%token})
+        else:
+            res = self.s.post(self.base_url+'/oauth2/token', auth=(key, secret), data={'grant_type':'client_credentials'})
+            print(res.json())
+            token = res.json()['access_token']
+            self.s.headers.update({'Authorization': 'Bearer %s' % token})
+    def create_or_update_product(self, product_id=None, name='', description='', sub_type="SERVICE",
+                                 category="SOFTWARE"):
         url = '{}/catalogs/products'.format(self.base_url)
         data = {
             "name": name,
@@ -25,20 +25,23 @@ class PayPalClient():
             "type": sub_type,
             "category": category
         }
+        print(self.s.headers)
+        print(product_id)
         if product_id:
             data.pop("name")
             url = '{}/{}'.format(url, product_id)
-            res = self.s.patch(url, data=data)
+            res = self.s.patch(url, json=data)
         else:
-            res = self.s.post(url, data=data)
+            res = self.s.post(url, json=data)
         return res.json()
 
-
-    def create_or_update_product_plan(self, product_id, plan_id=None, name='', description='', interval_unit='MONTH', interval_count=1, amount=0, currency='USD', include_trial=False, trial_interval="WEEK", trial_interval_count=1):
+    def create_or_update_product_plan(self, product_id, plan_id=None, name='', description='', interval_unit='MONTH',
+                                      interval_count=1, amount=0, currency='USD', include_trial=False,
+                                      trial_interval="WEEK", trial_interval_count=1):
 
         url = '{}/billing/plans'.format(self.base_url)
         data = {
-            "product_id":product_id,
+            "product_id": product_id,
             "name": name,
             "description": description,
             "billing_cycles": [
@@ -74,14 +77,14 @@ class PayPalClient():
         }
         if include_trial:
             data["billing_cycles"].append({
-                    "frequency": {
-                        "interval_unit": trial_interval,
-                        "interval_count": trial_interval_count
-                    },
-                    "tenure_type": "TRIAL",
-                    "sequence": 2,
-                    "total_cycles": 1
-                },)
+                "frequency": {
+                    "interval_unit": trial_interval,
+                    "interval_count": trial_interval_count
+                },
+                "tenure_type": "TRIAL",
+                "sequence": 2,
+                "total_cycles": 1
+            }, )
         if plan_id:
             url = '{}/billing/plans/{}'.format(self.base_url, plan_id)
             data = {
@@ -119,6 +122,3 @@ class PayPalClient():
         }
         res = self.s.post(url, data)
         return res.json()
-
-paypal = PayPalClient(settings.PAYPAL_CLIENT_ID, settings.PAYPAL_CLIENT_SECRET)
-

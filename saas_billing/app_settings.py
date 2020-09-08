@@ -1,9 +1,9 @@
 from django.conf import settings
 
 SAAS_BILLING = {
-    'stripe' : {
-        'PLAN' : 'StripeSubscriptionPlan',
-        'COST' : 'StripeSubscriptionPlanCost'
+    'stripe': {
+        'PLAN': 'StripeSubscriptionPlan',
+        'COST': 'StripeSubscriptionPlanCost'
     },
     'paypal': {
         'PLAN': 'PaypalSubscriptionPlan',
@@ -12,19 +12,20 @@ SAAS_BILLING = {
 }
 
 SAAS_BILLING_AUTH = {
-    'stripe' : {
-         'PUBLISHABLE_KEY': '',
-          'LIVE_KEY': '',
-           'CANCEL_URL' : '',
-           'SUCCESS_URL' : ''
+    'stripe': {
+        'PUBLISHABLE_KEY': '',
+        'LIVE_KEY': '',
+        'CANCEL_URL': '',
+        'SUCCESS_URL': ''
     },
-    'paypal' : {
-          'CLIENT_ID' : '',
-          'CLIENT_SECRET' : '',
-           'CANCEL_URL' : '',
-           'SUCCESS_URL' : ''
+    'paypal': {
+        'CLIENT_ID': '',
+        'CLIENT_SECRET': '',
+        'CANCEL_URL': '',
+        'SUCCESS_URL': ''
     }
 }
+
 
 def compile_settings():
     """Compiles and validates all package settings and defaults.
@@ -39,9 +40,12 @@ def compile_settings():
     saas_billing_auth = getattr(
         settings, 'SAAS_BILLING_AUTH', SAAS_BILLING_AUTH
     )
+    print(';ddcdcdcdcdcd')
+    print(saas_billing_auth)
     return {
-        'billing_models' : saas_billing_models,
+        'billing_models': saas_billing_models,
         'billing_auths': saas_billing_auth
     }
+
 
 SETTINGS = compile_settings()

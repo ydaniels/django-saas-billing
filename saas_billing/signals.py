@@ -1,12 +1,18 @@
+import stripe
 from django.utils import timezone
 from django.db.models import ProtectedError
 from django.dispatch import receiver
 from django.db.models.signals import post_save, pre_delete
 
 from cryptocurrency_payment.models import CryptoCurrencyPayment
-
+from saas_billing.provider import PayPalClient
 from saas_billing.models import StripeSubscriptionPlan, StripeSubscriptionPlanCost
-from saas_billing.provider import stripe, paypal
+
+from saas_billing.provider import PayPalClient
+from saas_billing.app_settings import SETTINGS
+
+auth = SETTINGS['billing_auths']
+print(auth)
 
 @receiver(post_save, sender=CryptoCurrencyPayment, dispatch_uid='update_user_subscription')
 def save_profile(sender, instance, **kwargs):
@@ -32,17 +38,22 @@ def save_profile(sender, instance, **kwargs):
 @receiver(pre_delete, sender=StripeSubscriptionPlan)
 def delete_stripe_subscription_plan_hook(sender, instance, using, **kwargs):
     if instance.plan_ref:
+        stripe.api_key = auth['stripe']['PUBLISHABLE_KEY']
         obj = stripe.Product.delete(instance.plan_ref)
         if obj.deleted is not True:
             raise ProtectedError
 
+
 @receiver(pre_delete, sender=StripeSubscriptionPlanCost)
 def delete_stripe_plan_cost_hook(sender, instance, using, **kwargs):
     if instance.cost_ref:
+        stripe.api_key = auth['stripe']['PUBLISHABLE_KEY']
         obj = stripe.Product.delete(instance.cost_ref)
         if obj.deleted is not True:
             raise ProtectedError
 
+
 def deactivate_paypal_plan_cost(sender, instance, using, **kwargs):
     if instance.cost_ref:
+        paypal = PayPalClient(auth['paypal']['CLIENT_ID'], auth['paypal']['CLIENT_SECRET'])
         paypal.deactivate(instance.cost_ref)

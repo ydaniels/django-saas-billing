@@ -40,8 +40,6 @@ def compile_settings():
     saas_billing_auth = getattr(
         settings, 'SAAS_BILLING_AUTH', SAAS_BILLING_AUTH
     )
-    print(';ddcdcdcdcdcd')
-    print(saas_billing_auth)
     return {
         'billing_models': saas_billing_models,
         'billing_auths': saas_billing_auth

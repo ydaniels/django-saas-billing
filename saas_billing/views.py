@@ -67,9 +67,11 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         # Get old subscription
         cost = plan_cost.cost
         crypto = self.request.data.get('crypto')
-        unpaid_count = CryptoCurrencyPayment.objects.filter(user=self.request.user).exclude(status=CryptoCurrencyPayment.PAYMENT_PAID).count()
+        unpaid_count = CryptoCurrencyPayment.objects.filter(user=self.request.user).exclude(
+            status=CryptoCurrencyPayment.PAYMENT_PAID).count()
         if unpaid_count > 0:
-            return Response({'detail': 'You cannot subscribe for a new plan if you have unpaid bitcoin transactions'}, status=HTTP_400_BAD_REQUEST)
+            return Response({'detail': 'You cannot subscribe for a new plan if you have unpaid bitcoin transactions'},
+                            status=HTTP_400_BAD_REQUEST)
         active_subscriptions = UserSubscription.objects.filter(user=request.user, active=True).all()
         for subscription in active_subscriptions:
             unused_balance = subscription.unused_daily_balance
@@ -108,6 +110,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         Model = AppConfig.get_model(cost_model_str)
         external_cost = Model.objects.get(cost=cost)
         return Response({'id': external_cost.cost_ref})
+
 
 class CryptoCurrencyPaymentViewset(ReadOnlyModelViewSet):
     serializer_class = CryptoCurrencyPaymentSerializer

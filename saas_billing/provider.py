@@ -98,12 +98,14 @@ class PayPalClient():
     def activate(self, plan_id):
         url = '{}/billing/plans/{}/activate'.format(self.base_url, plan_id)
         res = self.s.post(url)
-        return res.json()
+        if res.status_code != 204:
+            raise requests.ConnectionError(res.content)
 
     def deactivate(self, plan_id):
         url = '{}/billing/plans/{}/deactivate'.format(self.base_url, plan_id)
         res = self.s.post(url)
-        return res.json()
+        if res.status_code != 204:
+            raise requests.ConnectionError(res.content)
 
     def update_plan_pricing(self, plan_id, amount, currency='USD'):
         url = '{}/billing/plans/{}/update-pricing-schemes'.format(self.base_url, plan_id)
@@ -114,11 +116,12 @@ class PayPalClient():
                 "pricing_scheme": {
                     "fixed_price": {
                         "value": amount,
-                        "currency_code": currency
+                        "currency_code": currency.upper()
                     }
                 }
             }
             ]
         }
         res = self.s.post(url, json=data)
-        return res.json()
+        if res.status_code != 204:
+            raise requests.ConnectionError(res.content)

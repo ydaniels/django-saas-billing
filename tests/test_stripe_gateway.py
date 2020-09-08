@@ -27,6 +27,17 @@ class GatewayTest(APITestCase):
         self.stripe_plan.refresh_from_db()
         self.assertEqual(res.id, self.stripe_plan.plan_ref)
 
+    @patch('saas_billing.signals.delete_stripe_subscription_plan_hook')
+    @patch('stripe.api_base', new_callable=PropertyMock(return_value="http://localhost:12111"))
+    def test_delete_stripe_subscription_plan(self, api_base, signals):
+        res = self.stripe_plan.create_or_update()
+        self.plan.refresh_from_db()
+        self.stripe_plan.refresh_from_db()
+        self.assertEqual(res.id, self.stripe_plan.plan_ref)
+        self.plan.delete()
+        self.assertRaises(StripeSubscriptionPlan.DoesNotExist, self.stripe_plan.refresh_from_db)
+
+
     @patch('stripe.api_base', new_callable=PropertyMock(return_value="http://localhost:12111"))
     def test_update_stripe_subscription_plan(self, api_base):
         self.plan.plan_name = 'New Plan Name'
@@ -45,3 +56,14 @@ class GatewayTest(APITestCase):
         self.stripe_cost.refresh_from_db()
         self.assertEqual(res.id, self.stripe_cost.cost_ref)
         self.assertEqual('{:.2f}'.format(float(res.unit_amount_decimal)), str(self.stripe_cost.cost.cost * 100))
+
+    @patch('saas_billing.signals.delete_stripe_plan_cost_hook')
+    @patch('stripe.api_base', new_callable=PropertyMock(return_value="http://localhost:12111"))
+    def test_delete_stripe_subscription_cost(self, api_base, signals):
+        res = self.stripe_cost.create_or_update()
+        self.cost.refresh_from_db()
+        self.stripe_cost.refresh_from_db()
+        self.assertEqual(res.id, self.stripe_cost.cost_ref)
+        self.assertEqual('{:.2f}'.format(float(res.unit_amount_decimal)), str(self.stripe_cost.cost.cost * 100))
+        self.cost.delete()
+        self.assertRaises(StripeSubscriptionPlanCost.DoesNotExist, self.stripe_cost.refresh_from_db)

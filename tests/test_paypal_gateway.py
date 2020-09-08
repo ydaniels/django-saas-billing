@@ -31,3 +31,22 @@ class GatewayTest(APITestCase):
         res = self.paypal_cost.create_or_update()
         self.cost.refresh_from_db()
         self.assertEqual(res['id'], self.paypal_cost.cost_ref)
+        self.cost.cost = 9.99
+        self.cost.save()
+        res = self.paypal_cost.create_or_update()
+
+
+    def test_plan_cost_deactivate_activate(self):
+        self.paypal_plan.create_or_update()
+        self.paypal_cost.create_or_update()
+        res = self.paypal_cost.deactivate()
+        res = self.paypal_cost.activate()
+        print(res)
+
+    def test_delete_plan_cost(self):
+        self.paypal_plan.create_or_update()
+        res = self.paypal_cost.create_or_update()
+        self.cost.refresh_from_db()
+        self.assertEqual(res['id'], self.paypal_cost.cost_ref)
+        self.cost.delete()
+        self.assertRaises(PaypalSubscriptionPlanCost.DoesNotExist, self.paypal_cost.refresh_from_db)

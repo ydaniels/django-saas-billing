@@ -9,11 +9,12 @@ from cryptocurrency_payment.models import create_new_payment
 from saas_billing.provider import PayPalClient
 from saas_billing.app_settings import SETTINGS
 
-
 auth = SETTINGS['billing_auths']
-print(auth['stripe'])
+
 stripe.api_key = auth['stripe']['LIVE_KEY']
-paypal = PayPalClient(auth['paypal']['CLIENT_ID'],auth['paypal']['CLIENT_SECRET'], token=auth['paypal']['TOKEN'], env=auth['paypal']['ENV'] )
+paypal = PayPalClient(auth['paypal']['CLIENT_ID'], auth['paypal']['CLIENT_SECRET'], token=auth['paypal']['TOKEN'],
+                      env=auth['paypal']['ENV'])
+
 
 def auto_activate_subscription(subscription, amount, transaction_date=None):
     if amount > 0:
@@ -71,7 +72,8 @@ class StripeSubscriptionPlanCost(models.Model):
         return res
 
     def __str__(self):
-        return '{}|{}|{}|{}'.format(self.cost.plan.plan, self.cost.get_recurrence_unit_display(), self.cost.recurrence_period,
+        return '{}|{}|{}|{}'.format(self.cost.plan.plan, self.cost.get_recurrence_unit_display(),
+                                    self.cost.recurrence_period,
                                     self.cost_ref)
 
     def pre_process_subscription(self, user):
@@ -99,7 +101,7 @@ class PaypalSubscriptionPlan(models.Model):
             self.save()
         else:
             res = paypal.create_or_update_product(self.plan_ref, name=self.plan.plan_name,
-                                            description=self.plan.plan_description)
+                                                  description=self.plan.plan_description)
         return res
 
     def __str__(self):
@@ -112,7 +114,8 @@ class PaypalSubscriptionPlanCost(models.Model):
 
     def create_or_update(self):
         if not self.cost_ref:
-            res = paypal.create_or_update_product_plan(product_id=self.cost.plan.paypal_subscription_plan.plan_ref, name=str(self.cost),
+            res = paypal.create_or_update_product_plan(product_id=self.cost.plan.paypal_subscription_plan.plan_ref,
+                                                       name=str(self.cost),
                                                        interval_unit=self.cost.get_recurrence_unit_display(),
                                                        interval_count=self.cost.recurrence_period,
                                                        amount=self.cost.cost, currency="usd", include_trial=False)
@@ -125,11 +128,11 @@ class PaypalSubscriptionPlanCost(models.Model):
 
     def activate(self):
         if self.cost_ref:
-            paypal.activate(self.cost_ref)
+            return paypal.activate(self.cost_ref)
 
     def deactivate(self):
         if self.cost_ref:
-            paypal.deactivate(self.cost_ref)
+            return paypal.deactivate(self.cost_ref)
 
     def __str__(self):
         return '{}|{}|{}|{}'.format(self.cost.plan.plan, self.cost.recurrence_unit, self.cost.recurrence_period,

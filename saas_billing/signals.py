@@ -6,7 +6,7 @@ from django.db.models.signals import post_save, pre_delete
 
 from cryptocurrency_payment.models import CryptoCurrencyPayment
 from saas_billing.provider import PayPalClient
-from saas_billing.models import StripeSubscriptionPlan, StripeSubscriptionPlanCost
+from saas_billing.models import StripeSubscriptionPlan, StripeSubscriptionPlanCost, PaypalSubscriptionPlanCost
 
 from saas_billing.provider import PayPalClient
 from saas_billing.app_settings import SETTINGS
@@ -38,22 +38,23 @@ def save_profile(sender, instance, **kwargs):
 @receiver(pre_delete, sender=StripeSubscriptionPlan)
 def delete_stripe_subscription_plan_hook(sender, instance, using, **kwargs):
     if instance.plan_ref:
-        stripe.api_key = auth['stripe']['PUBLISHABLE_KEY']
-        obj = stripe.Product.delete(instance.plan_ref)
-        if obj.deleted is not True:
+        stripe.api_key = auth['stripe']['LIVE_KEY']
+        obj = stripe.Product.modify(instance.plan_ref, active=False)
+        if obj.active is not False:
             raise ProtectedError
 
 
 @receiver(pre_delete, sender=StripeSubscriptionPlanCost)
 def delete_stripe_plan_cost_hook(sender, instance, using, **kwargs):
     if instance.cost_ref:
-        stripe.api_key = auth['stripe']['PUBLISHABLE_KEY']
-        obj = stripe.Product.delete(instance.cost_ref)
-        if obj.deleted is not True:
+        stripe.api_key = auth['stripe']['LIVE_KEY']
+        obj = stripe.Price.modify(instance.cost_ref, active=False)
+        if obj.active is not False:
             raise ProtectedError
 
-
+@receiver(pre_delete, sender=PaypalSubscriptionPlanCost)
 def deactivate_paypal_plan_cost(sender, instance, using, **kwargs):
     if instance.cost_ref:
-        paypal = PayPalClient(auth['paypal']['CLIENT_ID'], auth['paypal']['CLIENT_SECRET'])
+        paypal = PayPalClient(auth['paypal']['CLIENT_ID'], auth['paypal']['CLIENT_SECRET'], token=auth['paypal']['TOKEN'],
+                      env=auth['paypal']['ENV'])
         paypal.deactivate(instance.cost_ref)

@@ -1,6 +1,9 @@
 # Create your views here.
-from rest_framework.permissions import IsAuthenticated
+import stripe
+import json
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.apps import AppConfig
+from django.apps import apps
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST
@@ -14,7 +17,9 @@ from cryptocurrency_payment.models import CryptoCurrencyPayment
 from saas_billing.serializers import CryptoCurrencyPaymentSerializer, SubscriptionTransactionSerializerPayment
 from saas_billing.app_settings import SETTINGS
 from saas_billing.models import SubscriptionTransaction, auto_activate_subscription
+from saas_billing.app_settings import SETTINGS
 
+auth = SETTINGS['billing_auths']
 
 class SubscriptionTransactionPaymentViewSet(ReadOnlyModelViewSet):
     serializer_class = SubscriptionTransactionSerializerPayment
@@ -58,6 +63,31 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
     def get_active_subscriptions(self, request):
         return Response(UserSubscriptionSerializer(self.request.user.subscriptions.all(), many=True).data)
 
+    @action(methods=['get'], url_name='stripe_gateway', detail=False, permission_classes=[AllowAny])
+    def stripe_gateway(self, request):
+        payload = request.data
+        try:
+            event = stripe.Event.construct_from(
+                json.loads(payload), auth['stripe']['LIVE_KEY']
+            )
+        except ValueError as e:
+            # Invalid payload
+            return Response(status=HTTP_400_BAD_REQUEST)
+
+            # Handle the event
+        if event.type == 'payment_intent.succeeded':
+            payment_intent = event.data.object  # contains a stripe.PaymentIntent
+            # Then define and call a method to handle the successful payment intent.
+            # handle_payment_intent_succeeded(payment_intent)
+        elif event.type == 'payment_method.attached':
+            payment_method = event.data.object  # contains a stripe.PaymentMethod
+            # Then define and call a method to handle the successful attachment of a PaymentMethod.
+            # handle_payment_method_attached(payment_method)
+            # ... handle other event types
+        else:
+            return Response(status=HTTP_400_BAD_REQUEST)
+
+        return Response({})
 
 class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
 
@@ -102,12 +132,13 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
             data['payment'] = serialized_payment.data['id']
         return Response(data, status=HTTP_201_CREATED)
 
-    @action(methods=['get'], url_name='get_gateway_cost', detail=True, permission_classes=[IsAuthenticated])
-    def get_gateway_cost(self, request, pk=None):
+    @action(methods=['post'], url_name='init_gateway_subscription', detail=True, permission_classes=[IsAuthenticated])
+    def init_gateway_subscription(self, request, pk=None):
         cost = self.get_object()
-        gateway = self.request.data.get('gateway')
-        cost_model_str = SETTINGS['billing_models'][gateway]['COST']
-        Model = AppConfig.get_model(cost_model_str)
+        gateway = self.request.data['gateway']
+        cost_model_str = SETTINGS['billing_models'][gateway]['cost']
+        print(cost_model_str)
+        Model = apps.get_model(cost_model_str)
         external_cost = Model.objects.get(cost=cost)
         data = external_cost.get_external_ref(request.user)
         return Response(data)

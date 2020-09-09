@@ -1,5 +1,6 @@
 import stripe
 from django.db import models
+from django.utils import timezone
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
 from subscriptions_api.base_models import BaseSubscriptionTransaction
@@ -83,14 +84,15 @@ class StripeSubscriptionPlanCost(models.Model):
             mode='subscription',
             success_url=auth['SUCCESS_URL'],
             client_reference_id=user.id,
-            email=user.email,
-            allow_promotion_codes=True
+            customer_email=user.email,
+            allow_promotion_codes=True,
+            payment_method_types=["card"]
         )
         return session.id
 
     def get_external_ref(self, user):
         session_id = self.pre_process_subscription(user)
-        return {'session_id': session_id, 'ref': self.cost_ref}
+        return {'session_id': session_id, 'cost_id': self.cost_ref}
 
 class PaypalSubscriptionPlan(models.Model):
     plan = models.OneToOneField(SubscriptionPlan, on_delete=models.CASCADE, unique=True,
@@ -137,7 +139,6 @@ class PaypalSubscriptionPlanCost(models.Model):
                                                        interval_unit=self.cost.get_recurrence_unit_display(),
                                                        interval_count=self.cost.recurrence_period,
                                                        amount=self.cost.cost, currency="usd", include_trial=trial, trial_interval_unit = trial_interval_unit, trial_interval_count=trial_interval_count)
-            print(res)
             self.cost_ref = res['id']
             self.save()
         else:
@@ -153,7 +154,15 @@ class PaypalSubscriptionPlanCost(models.Model):
             return paypal.deactivate(self.cost_ref)
 
     def get_external_ref(self, user):
-        return self.cost_ref
+        res = paypal.create_subscription(self.cost_ref, user.email, user.first_name, user.last_name, return_url=auth['paypal']['SUCCESS_URL'],
+                                   cancel_url=auth['paypal']['CANCEL_URL'])
+        subscription_link = None
+        print(res)
+        for link in res['links']:
+            print(link)
+            if link['rel'].lower() == 'approve':
+                subscription_link = link['href']
+        return { 'cost_id' : self.cost_ref, 'payment_link': subscription_link}
 
     def __str__(self):
         return '{}|{}|{}|{}'.format(self.cost.plan.plan, self.cost.recurrence_unit, self.cost.recurrence_period,

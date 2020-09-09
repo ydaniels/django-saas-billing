@@ -13,9 +13,10 @@ class PayPalClient():
             self.s.headers.update({'Authorization': 'Bearer %s'%token})
         else:
             res = self.s.post(self.base_url+'/oauth2/token', auth=(key, secret), data={'grant_type':'client_credentials'})
-            print(res.json())
+
             token = res.json()['access_token']
             self.s.headers.update({'Authorization': 'Bearer %s' % token})
+            #print(self.s.headers)
 
     def create_or_update_product(self, product_id=None, name='', description='', sub_type="SERVICE",
                                  category="SOFTWARE"):
@@ -100,7 +101,6 @@ class PayPalClient():
                     }
                 }
             })
-        print(data)
         if plan_id:
             url = '{}/billing/plans/{}'.format(self.base_url, plan_id)
             data = {
@@ -109,6 +109,34 @@ class PayPalClient():
             res = self.s.patch(url, json=data)
         else:
             res = self.s.post(url, json=data)
+        return res.json()
+
+    def create_subscription(self, plan_id, email, first_name='', last_name='', return_url=None, cancel_url=None, start_time=None):
+        url = '{}/billing/subscriptions'.format(self.base_url)
+        data = {
+            "plan_id": plan_id,
+            "start_time": start_time,
+            "subscriber": {
+                "name": {
+                    "given_name": first_name,
+                    "surname": last_name
+                },
+                "email_address": email
+            },
+            "application_context": {
+                "brand_name": "vendSmarter",
+                "locale": "en-US",
+                "shipping_preference": "SET_PROVIDED_ADDRESS",
+                "user_action": "SUBSCRIBE_NOW",
+                "payment_method": {
+                    "payer_selected": "PAYPAL",
+                    "payee_preferred": "IMMEDIATE_PAYMENT_REQUIRED"
+                },
+                "return_url": return_url,
+                "cancel_url": cancel_url
+            }
+        }
+        res = self.s.post(url, json=data)
         return res.json()
 
     def activate(self, plan_id):

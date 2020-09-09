@@ -1,5 +1,7 @@
 import pytest
 from unittest.mock import patch, PropertyMock
+from django.urls import reverse
+from django.contrib.auth.models import User
 from rest_framework.test import APITestCase
 from subscriptions_api.models import PlanCost, SubscriptionPlan, UserSubscription
 
@@ -9,6 +11,8 @@ from saas_billing.models import StripeSubscriptionPlan, StripeSubscriptionPlanCo
 class GatewayTest(APITestCase):
 
     def setUp(self):
+        self.user = User.objects.create_user('demo_user', email='test@gmail.com')
+        self.client.force_authenticate(self.user)
         self.cost = self.create_plan_cost("Basic Plan", cost=10)
         self.stripe_plan = StripeSubscriptionPlan(plan=self.plan)
         self.stripe_cost = StripeSubscriptionPlanCost(cost=self.cost)
@@ -67,3 +71,11 @@ class GatewayTest(APITestCase):
         self.assertEqual('{:.2f}'.format(float(res.unit_amount_decimal)), str(self.stripe_cost.cost.cost * 100))
         self.cost.delete()
         self.assertRaises(StripeSubscriptionPlanCost.DoesNotExist, self.stripe_cost.refresh_from_db)
+
+    @patch('stripe.api_base', new_callable=PropertyMock(return_value="http://localhost:12111"))
+    def test_get_stripe_subscription_link(self, api_base):
+        res = self.stripe_cost.create_or_update()
+        cost_url = reverse('saas_billing:plan-costs-init_gateway_subscription', kwargs={'pk': self.cost.pk})
+        rsp = self.client.post(cost_url, data={'gateway': 'stripe'})
+        self.assertEqual(rsp.data['cost_id'], self.stripe_cost.cost_ref)
+        self.assertIn('session_id', rsp.data)

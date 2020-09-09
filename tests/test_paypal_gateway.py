@@ -1,5 +1,7 @@
 import pytest
 from unittest.mock import patch, PropertyMock
+from django.urls import reverse
+from django.contrib.auth.models import User
 from rest_framework.test import APITestCase
 from subscriptions_api.models import PlanCost, SubscriptionPlan, UserSubscription
 
@@ -9,6 +11,8 @@ from saas_billing.models import PaypalSubscriptionPlan, PaypalSubscriptionPlanCo
 class GatewayTest(APITestCase):
 
     def setUp(self):
+        self.user = User.objects.create_user('demo_user', email='test@gmail.com')
+        self.client.force_authenticate(self.user)
         self.cost = self.create_plan_cost("Paypal Basic Plan", cost=10)
         self.paypal_plan = PaypalSubscriptionPlan(plan=self.plan)
         self.paypal_cost = PaypalSubscriptionPlanCost(cost=self.cost)
@@ -50,3 +54,12 @@ class GatewayTest(APITestCase):
         self.assertEqual(res['id'], self.paypal_cost.cost_ref)
         self.cost.delete()
         self.assertRaises(PaypalSubscriptionPlanCost.DoesNotExist, self.paypal_cost.refresh_from_db)
+
+    def test_get_paypal_subscription_link(self):
+        self.paypal_plan.create_or_update()
+        res = self.paypal_cost.create_or_update()
+        cost_url = reverse('saas_billing:plan-costs-init_gateway_subscription', kwargs={'pk': self.cost.pk})
+        rsp = self.client.post(cost_url, data={'gateway': 'paypal'})
+        self.assertEqual(rsp.data['cost_id'], self.paypal_cost.cost_ref)
+        print(rsp.data)
+        self.assertIn('payment_link', rsp.data)

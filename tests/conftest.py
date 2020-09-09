@@ -71,8 +71,12 @@ def pytest_configure():
         PAYPAL_CLIENT_SECRET = 'EMgFt7kqJofYu9wmYPAcuCPLYiCquAwD4pTTc03vnxBVvVl9MGyhE1vQFe79Da9_544yZwcQx0EZs9fd',
         SAAS_BILLING_MODELS = {
             'stripe': {
-                'plan_model': 'StripeSubscriptionPlan',
-                'cost': 'StripeSubscriptionPlanCost'
+                'plan': 'saas_billing.StripeSubscriptionPlan',
+                'cost': 'saas_billing.StripeSubscriptionPlanCost'
+            },
+            'paypal': {
+                'plan': 'saas_billing.PaypalSubscriptionPlan',
+                'cost': 'saas_billing.PaypalSubscriptionPlanCost'
             }
         },
         SAAS_BILLING_AUTH = {
@@ -87,8 +91,8 @@ def pytest_configure():
                 'CLIENT_SECRET': 'EMgFt7kqJofYu9wmYPAcuCPLYiCquAwD4pTTc03vnxBVvVl9MGyhE1vQFe79Da9_544yZwcQx0EZs9fd',
                 'TOKEN': None,
                 'ENV': 'dev',
-                'CANCEL_URL': '',
-                'SUCCESS_URL': ''
+                'CANCEL_URL': 'https://google.com/cancel',
+                'SUCCESS_URL': 'https://google.com/success'
             }
         }
 

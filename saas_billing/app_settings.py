@@ -2,12 +2,12 @@ from django.conf import settings
 
 SAAS_BILLING = {
     'stripe': {
-        'PLAN': 'StripeSubscriptionPlan',
-        'COST': 'StripeSubscriptionPlanCost'
+        'PLAN': 'saas_billing.StripeSubscriptionPlan',
+        'COST': 'saas_billing.StripeSubscriptionPlanCost'
     },
     'paypal': {
-        'PLAN': 'PaypalSubscriptionPlan',
-        'COST': 'PaypalSubscriptionPlanCost'
+        'PLAN': 'saas_billing.PaypalSubscriptionPlan',
+        'COST': 'saas_billing.PaypalSubscriptionPlanCost'
     }
 }
 
@@ -35,7 +35,7 @@ def compile_settings():
             dict: All possible Django Flexible Subscriptions settings.
     """
     saas_billing_models = getattr(
-        settings, 'SAAS_BILLING', SAAS_BILLING
+        settings, 'SAAS_BILLING_MODELS', SAAS_BILLING
     )
     saas_billing_auth = getattr(
         settings, 'SAAS_BILLING_AUTH', SAAS_BILLING_AUTH

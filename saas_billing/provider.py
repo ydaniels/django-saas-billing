@@ -169,3 +169,10 @@ class PayPalClient():
         res = self.s.post(url, json=data)
         if res.status_code != 204:
             raise requests.ConnectionError(res.content)
+
+    def verify_webhook(self, data):
+        url = '{}/notifications/verify-webhook-signature'.format(self.base_url)
+        r = self.s.post(url, data=data)
+        if r.status_code == 200 and r.json()["verification_status"] == "SUCCESS":
+            return True
+        return  False

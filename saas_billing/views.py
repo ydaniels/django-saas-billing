@@ -15,7 +15,7 @@ from subscriptions_api.serializers import UserSubscriptionSerializer
 from cryptocurrency_payment.models import CryptoCurrencyPayment
 
 from saas_billing.serializers import CryptoCurrencyPaymentSerializer, SubscriptionTransactionSerializerPayment
-from saas_billing.app_settings import SETTINGS
+from saas_billing.provider import PayPalClient
 from saas_billing.models import SubscriptionTransaction, auto_activate_subscription
 from saas_billing.app_settings import SETTINGS
 
@@ -44,10 +44,14 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
     @action(methods=['post'], url_name='unsubscribe_user', detail=True, permission_classes=[IsAuthenticated])
     def unsubscribe_user(self, request, pk=None):
         subscription = self.get_object()
-        if subscription.unused_daily_balance > 0:
-            subscription.record_transaction(amount=-1 * subscription.unused_daily_balance)
-        subscription.deactivate()
-        subscription.notify_deactivate()
+        if subscription.gateway:
+            #deactivate on gateway
+            pass
+        else:
+            if subscription.unused_daily_balance > 0:
+                subscription.record_transaction(amount=-1 * subscription.unused_daily_balance)
+            subscription.deactivate()
+            subscription.notify_deactivate()
         return Response({'status': True})
 
     @action(methods=['get'], url_name='get_active_subscription', detail=False, permission_classes=[IsAuthenticated])
@@ -63,6 +67,52 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
     def get_active_subscriptions(self, request):
         return Response(UserSubscriptionSerializer(self.request.user.subscriptions.all(), many=True).data)
 
+    @action(methods=['post'], url_name='paypal_gateway', detail=False, permission_classes=[AllowAny])
+    def paypal_gateway(self, request):
+        event_type = request.data['event_type']
+        payload = {
+            'auth_algo': request.headers['PAYPAL-AUTH-ALGO'],
+            'cert_url': request.headers['PAYPAL-CERT-URL'],
+            'transmission_id': request.headers['PAYPAL-TRANSMISSION-ID'],
+            'transmission_sig': request.headers['PAYPAL-TRANSMISSION-SIG'],
+            'transmission_time': request.headers['PAYPAL-TRANSMISSION-TIME'],
+            'webhook_id': auth['paypal']['WEB_HOOK_ID'],
+            'webhook_event': event_type
+        }
+
+        paypal = PayPalClient(auth['paypal']['CLIENT_ID'], auth['paypal']['CLIENT_SECRET'],
+                              token=auth['paypal']['TOKEN'],
+                              env=auth['paypal']['ENV'])
+        req = paypal.verify_webhook(payload)
+        if req is True:
+            data = request.data["resource"]
+            subscription_id = data['id']
+            subscription = UserSubscription.objects.get(paypal_ref=subscription_id)
+            if event_type == 'BILLING.SUBSCRIPTION.ACTIVATED':
+                subscription.activate()
+                subscription.record_transaction()
+                subscription.notify_activate()
+            elif event_type == 'BILLING.SUBSCRIPTION.SUSPENDED':
+                subscription.deactivate()
+                subscription.notify_deactivate()
+            elif event_type == 'BILLING.SUBSCRIPTION.CANCELLED':
+                subscription.notify_deactivate()
+                subscription.deactivate()
+            elif event_type == 'BILLING.SUBSCRIPTION.EXPIRED':
+                subscription.deactivate()
+                subscription.notify_expired()
+            elif event_type == 'BILLING.SUBSCRIPTION.PAYMENT.FAILED':
+                subscription.notify_payment_error()
+            elif event_type == 'BILLING.SUBSCRIPTION.RE-ACTIVATED':
+                pass
+            elif event_type == 'BILLING.SUBSCRIPTION.RENEWED':
+                pass
+            elif event_type == 'BILLING.SUBSCRIPTION.UPDATED':
+                pass
+            else:
+                pass
+            return Response({})
+
     @action(methods=['get'], url_name='stripe_gateway', detail=False, permission_classes=[AllowAny])
     def stripe_gateway(self, request):
         payload = request.data
@@ -75,15 +125,39 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
             return Response(status=HTTP_400_BAD_REQUEST)
 
             # Handle the event
-        if event.type == 'payment_intent.succeeded':
-            payment_intent = event.data.object  # contains a stripe.PaymentIntent
-            # Then define and call a method to handle the successful payment intent.
-            # handle_payment_intent_succeeded(payment_intent)
-        elif event.type == 'payment_method.attached':
-            payment_method = event.data.object  # contains a stripe.PaymentMethod
-            # Then define and call a method to handle the successful attachment of a PaymentMethod.
-            # handle_payment_method_attached(payment_method)
-            # ... handle other event types
+        data = event.data.object
+        if 'customer.subscription' in event.type :
+            subscription_id = data.id
+            subscription = UserSubscription.objects.get(stripe_ref=subscription_id)
+            subscription_status = data['status']
+            if subscription_status == 'active' or subscription_status == 'trialing':
+                subscription.activate()
+                subscription.record_transaction()
+                subscription.notify_new()
+            elif subscription_status == 'incomplete':
+                subscription.notify_payment_error()
+            elif subscription_status == 'incomplete_expired':
+                subscription.deactivate()
+                subscription.notify_deactivate()
+            elif subscription_status == 'past_due'  or subscription_status == 'unpaid':
+                subscription.notify_due()
+            elif subscription_status == 'expired':
+                subscription.deactivate()
+                subscription.notify_expired()
+            elif subscription_status == 'cancelled':
+                subscription.deactivate()
+                subscription.notify_expired()
+        elif 'invoice' in event.type:
+            invoice = event.data.object  # contains a stripe.PaymentMethod
+            subscription = UserSubscription.objects.get(stripe_ref=invoice.subscription)
+            if event.type == 'invoice.paid':
+                subscription.notify_payment_success()
+            elif event.type == 'invoice.created':
+                subscription.notify_new()
+            elif event.type == 'invoice.upcoming':
+                subscription.notify_due()
+            elif event.type == 'invoice.payment_failed':
+                subscription.notify_payment_error()
         else:
             return Response(status=HTTP_400_BAD_REQUEST)
 
@@ -140,7 +214,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         print(cost_model_str)
         Model = apps.get_model(cost_model_str)
         external_cost = Model.objects.get(cost=cost)
-        data = external_cost.get_external_ref(request.user)
+        data = external_cost.setup_subscription(request.user)
         return Response(data)
 
 

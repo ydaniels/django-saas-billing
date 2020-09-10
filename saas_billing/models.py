@@ -35,6 +35,8 @@ def auto_activate_subscription(subscription, amount, transaction_date=None):
     transaction = subscription.record_transaction(amount=amount, transaction_date=transaction_date)
     return transaction
 
+class UserSubscription(BaseUserSubscription):
+     gateway = models.CharField(null=True, blank=True, max_length=100)
 
 class StripeSubscriptionPlan(models.Model):
     plan = models.OneToOneField(SubscriptionPlan, on_delete=models.CASCADE, unique=True,
@@ -110,13 +112,25 @@ class StripeSubscriptionPlanCost(models.Model):
         subscription = self.cost.setup_user_subscription(user, active=False, no_multipe_subscription=True,
                                                          resuse=True)
         subscription.notify_new()
-        subscription.stripe_ref = stripe_subscription.id
+        StripeSubscription(subscription=subscription,  subscription_ref=stripe_subscription.id).save()
         subscription.gateway = 'stripe'
         subscription.save()
         return { 'session_id' : session.id, 'id': subscription.pk, 'cost_id': self.cost_ref}
 
     def setup_subscription(self, user):
         return self.pre_process_subscription(user)
+
+class StripeSubscription(models.Model):
+    subscription = models.OneToOneField(UserSubscription, on_delete=models.CASCADE, unique=True, related_name='stripe_subscription')
+    subscription_ref = models.CharField(max_length=100)
+
+    def deactivate(self):
+        res = stripe.Subscription.delete(self.subscription_ref, invoice_now=True, prorate=True)
+        if res.status == 'cancelled':
+            return True
+
+    def activate(self):
+        self.subscription.activate()
 
 class PaypalSubscriptionPlan(models.Model):
     plan = models.OneToOneField(SubscriptionPlan, on_delete=models.CASCADE, unique=True,
@@ -187,7 +201,7 @@ class PaypalSubscriptionPlanCost(models.Model):
         subscription = self.cost.setup_user_subscription(user, active=False, no_multipe_subscription=True,
                                                          resuse=True)
         subscription.notify_new()
-        subscription.paypal_ref = res['id']
+        StripeSubscription(subscription=subscription, subscription_ref=res['id']).save()
         subscription.gateway = 'paypal'
         subscription.save()
         return { 'cost_id' : self.cost_ref, 'payment_link': subscription_link, 'id': subscription.pk}
@@ -196,8 +210,12 @@ class PaypalSubscriptionPlanCost(models.Model):
         return '{}|{}|{}|{}'.format(self.cost.plan.plan, self.cost.recurrence_unit, self.cost.recurrence_period,
                                     self.cost_ref)
 
-class PaypalSubscriptionPlanCost(models.Model):
-    subscription = models.OneToOneField('UserSubscription', on_delete=models.CASCADE, unique=True, related_name='paypal_plan_cost')
+class PaypalSubscription(models.Model):
+    subscription = models.OneToOneField(UserSubscription, on_delete=models.CASCADE, unique=True, related_name='paypal_subscription')
+    subscription_ref = models.CharField(max_length=100)
+
+    def deactivate(self):
+        return paypal.cancel_subscription(self.subscription_ref)
 
 class SubscriptionTransaction(BaseSubscriptionTransaction):
     cryptocurrency_payments = GenericRelation(CryptoCurrencyPayment)
@@ -212,9 +230,3 @@ class SubscriptionTransaction(BaseSubscriptionTransaction):
                                      related_object=self, user=self.user)
         return payment
 
-
-class  UserSubscription(BaseUserSubscription):
-
-    stripe_ref = models.CharField(max_length=100, null=True, blank=True)
-    paypal_ref = models.CharField(max_length=100, null=True, blank=True)
-    gateway = models.CharField(max_length=20)

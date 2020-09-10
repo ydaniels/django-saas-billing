@@ -150,7 +150,12 @@ class PayPalClient():
         res = self.s.post(url)
         if res.status_code != 204:
             raise requests.ConnectionError(res.content)
-
+    def cancel_subscription(self, subscription_id):
+        url = '{}/billing/subscriptions/{}/cancel'.format(self.base_url, subscription_id)
+        res = self.s.post(url)
+        if res.status_code != 204:
+            raise requests.ConnectionError(res.content)
+        return True
     def update_plan_pricing(self, plan_id, amount, currency='USD'):
         url = '{}/billing/plans/{}/update-pricing-schemes'.format(self.base_url, plan_id)
 

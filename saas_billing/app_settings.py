@@ -2,13 +2,15 @@ from django.conf import settings
 
 SAAS_BILLING = {
     'stripe': {
-        'PLAN': 'saas_billing.StripeSubscriptionPlan',
-        'COST': 'saas_billing.StripeSubscriptionPlanCost'
-    },
-    'paypal': {
-        'PLAN': 'saas_billing.PaypalSubscriptionPlan',
-        'COST': 'saas_billing.PaypalSubscriptionPlanCost'
-    }
+                'plan': 'saas_billing.StripeSubscriptionPlan',
+                'cost': 'saas_billing.StripeSubscriptionPlanCost',
+                'subscription': 'saas_billing.StripeSubscription'
+            },
+            'paypal': {
+                'plan': 'saas_billing.PaypalSubscriptionPlan',
+                'cost': 'saas_billing.PaypalSubscriptionPlanCost',
+                'subscription': 'saas_billing.PaypalSubscription'
+            }
 }
 
 SAAS_BILLING_AUTH = {

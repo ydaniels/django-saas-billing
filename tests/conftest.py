@@ -73,11 +73,13 @@ def pytest_configure():
         SAAS_BILLING_MODELS = {
             'stripe': {
                 'plan': 'saas_billing.StripeSubscriptionPlan',
-                'cost': 'saas_billing.StripeSubscriptionPlanCost'
+                'cost': 'saas_billing.StripeSubscriptionPlanCost',
+                'subscription': 'saas_billing.StripeSubscription'
             },
             'paypal': {
                 'plan': 'saas_billing.PaypalSubscriptionPlan',
-                'cost': 'saas_billing.PaypalSubscriptionPlanCost'
+                'cost': 'saas_billing.PaypalSubscriptionPlanCost',
+                'subscription': 'saas_billing.PaypalSubscription'
             }
         },
         SAAS_BILLING_AUTH = {

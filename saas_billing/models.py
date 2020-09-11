@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib.auth  import get_user_model
 from django.contrib.contenttypes.fields import GenericRelation
 from subscriptions_api.base_models import BaseSubscriptionTransaction, BaseUserSubscription
-from subscriptions_api.models import SubscriptionPlan, PlanCost
+from subscriptions_api.models import SubscriptionPlan, PlanCost, UserSubscription
 from cryptocurrency_payment.models import CryptoCurrencyPayment
 from cryptocurrency_payment.models import create_new_payment
 from saas_billing.provider import PayPalClient
@@ -35,19 +35,16 @@ def auto_activate_subscription(subscription, amount, transaction_date=None):
     transaction = subscription.record_transaction(amount=amount, transaction_date=transaction_date)
     return transaction
 
-class UserSubscription(BaseUserSubscription):
-     gateway = models.CharField(null=True, blank=True, max_length=100)
-
 class StripeSubscriptionPlan(models.Model):
     plan = models.OneToOneField(SubscriptionPlan, on_delete=models.CASCADE, unique=True,
                                 related_name='stripe_subscription_plan')
     plan_ref = models.CharField(max_length=250, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def create_or_update(self):
         if not self.plan_ref:
-            res = stripe.Product.create(name=self.plan.plan_name, description=self.plan.plan_description)
-            print(res)
-            print(res.id)
+            res = stripe.Product.create(name=self.plan.plan_name, description=self.plan.plan_description, type='service')
             self.plan_ref = res.id
             self.save()
         else:
@@ -61,12 +58,31 @@ class StripeSubscriptionPlan(models.Model):
         return '{}|{}'.format(self.plan.plan_name, self.plan_ref)
 
 class StripeCustomer(models.Model):
-    user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE, unique=True)
+    user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE, unique=True, related_name='stripe_customer')
     customer_id = models.CharField(max_length=250, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def get_or_create_subscription(self, user, stripe_sub_obj):
+        try:
+            return StripeSubscription.objects.get(subscription_ref=stripe_sub_obj.id).subscription
+        except StripeSubscription.DoesNotExist:
+            cost_ref = stripe_sub_obj.items.data[0].price.id
+            cost = StripeSubscriptionPlanCost.objects.get(cost_ref = cost_ref).cost
+            subscription = cost.setup_user_subscription(user, active=False, no_multipe_subscription=True,
+                                                             resuse=True)
+            subscription.notify_new()
+            subscription.record_transaction()
+            subscription.reference = 'stripe'
+            subscription.save()
+            StripeSubscription(subscription_ref=stripe_sub_obj.items.data[0].subscription, subscription=subscription).save()
+            return subscription
 
 class StripeSubscriptionPlanCost(models.Model):
     cost = models.OneToOneField(PlanCost, on_delete=models.CASCADE, unique=True, related_name='stripe_plan_cost')
     cost_ref = models.CharField(max_length=250, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def create_or_update(self):
         if not self.cost_ref:
@@ -83,39 +99,34 @@ class StripeSubscriptionPlanCost(models.Model):
                                     self.cost.recurrence_period,
                                     self.cost_ref)
 
-    def pre_process_subscription(self, user):
-        auth = SETTINGS['billing_auths']['stripe']
+    def get_or_creeate_stripe_customer_id(self, user):
         try:
-            customer = StripeCustomer.objects.get(user=user).customer_id
+            customer_id = StripeCustomer.objects.get(user=user).customer_id
         except StripeCustomer.DoesNotExist:
-            customer = stripe.Customer.create(
+            customer_id = stripe.Customer.create(
                 name=user.first_name + ' '+user.last_name,
                 email = user.email
             ).id
-        stripe_subscription  = stripe.Subscription.create(
-            customer=customer,
-            items=[
-                {"price": self.cost_ref},
-            ],
-            trial_period_days=self.cost.plan.trial_period
-        )
+            sc = StripeCustomer(customer_id=customer_id, user=user)
+            sc.save()
+        return customer_id
+
+    def pre_process_subscription(self, user):
+        auth = SETTINGS['billing_auths']['stripe']
+        customer = self.get_or_creeate_stripe_customer_id(user)
         session = stripe.checkout.Session.create(
             cancel_url=auth['CANCEL_URL'],
             mode='subscription',
+            customer=customer,
             success_url=auth['SUCCESS_URL'],
-            client_reference_id=user.id,
-            customer_email=user.email,
+            line_items=[{
+                'price': self.cost_ref,
+                'quantity': 1,
+            }],
             allow_promotion_codes=True,
-            subscription = stripe_subscription.id,
             payment_method_types=["card"]
         )
-        subscription = self.cost.setup_user_subscription(user, active=False, no_multipe_subscription=True,
-                                                         resuse=True)
-        subscription.notify_new()
-        StripeSubscription(subscription=subscription,  subscription_ref=stripe_subscription.id).save()
-        subscription.gateway = 'stripe'
-        subscription.save()
-        return { 'session_id' : session.id, 'id': subscription.pk, 'cost_id': self.cost_ref}
+        return { 'session_id' : session.id, 'cost_id': self.cost_ref}
 
     def setup_subscription(self, user):
         return self.pre_process_subscription(user)
@@ -123,6 +134,8 @@ class StripeSubscriptionPlanCost(models.Model):
 class StripeSubscription(models.Model):
     subscription = models.OneToOneField(UserSubscription, on_delete=models.CASCADE, unique=True, related_name='stripe_subscription')
     subscription_ref = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def deactivate(self):
         res = stripe.Subscription.delete(self.subscription_ref, invoice_now=True, prorate=True)
@@ -136,6 +149,8 @@ class PaypalSubscriptionPlan(models.Model):
     plan = models.OneToOneField(SubscriptionPlan, on_delete=models.CASCADE, unique=True,
                                 related_name='paypal_subscription_plan')
     plan_ref = models.CharField(max_length=250)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def create_or_update(self):
         if not self.plan_ref:
@@ -154,6 +169,8 @@ class PaypalSubscriptionPlan(models.Model):
 class PaypalSubscriptionPlanCost(models.Model):
     cost = models.OneToOneField(PlanCost, on_delete=models.CASCADE, unique=True, related_name='paypal_plan_cost')
     cost_ref = models.CharField(max_length=250, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def create_or_update(self):
         if not self.cost_ref:
@@ -177,6 +194,7 @@ class PaypalSubscriptionPlanCost(models.Model):
                                                        interval_unit=self.cost.get_recurrence_unit_display(),
                                                        interval_count=self.cost.recurrence_period,
                                                        amount=self.cost.cost, currency="usd", include_trial=trial, trial_interval_unit = trial_interval_unit, trial_interval_count=trial_interval_count)
+            print(res)
             self.cost_ref = res['id']
             self.save()
         else:
@@ -200,11 +218,12 @@ class PaypalSubscriptionPlanCost(models.Model):
                 subscription_link = link['href']
         subscription = self.cost.setup_user_subscription(user, active=False, no_multipe_subscription=True,
                                                          resuse=True)
-        subscription.notify_new()
-        StripeSubscription(subscription=subscription, subscription_ref=res['id']).save()
-        subscription.gateway = 'paypal'
+        subscription.reference = 'paypal'
         subscription.save()
-        return { 'cost_id' : self.cost_ref, 'payment_link': subscription_link, 'id': subscription.pk}
+        subscription.notify_new()
+        subscription.record_transaction()
+        PaypalSubscription(subscription=subscription, subscription_ref=res['id'], payment_link=subscription_link).save()
+        return { 'cost_id' : self.cost_ref, 'payment_link': subscription_link, 'subscription_ref':res['id'], 'id': subscription.pk}
 
     def __str__(self):
         return '{}|{}|{}|{}'.format(self.cost.plan.plan, self.cost.recurrence_unit, self.cost.recurrence_period,
@@ -213,6 +232,10 @@ class PaypalSubscriptionPlanCost(models.Model):
 class PaypalSubscription(models.Model):
     subscription = models.OneToOneField(UserSubscription, on_delete=models.CASCADE, unique=True, related_name='paypal_subscription')
     subscription_ref = models.CharField(max_length=100)
+    payment_link = models.URLField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
 
     def deactivate(self):
         return paypal.cancel_subscription(self.subscription_ref)

@@ -2,7 +2,7 @@
 from django.db.models import Q
 from django.utils import timezone
 from datetime import timedelta
-from subscriptions_api.models import UserSubscription
+from saas_billing.models import UserSubscription
 from saas_billing.models import auto_activate_subscription
 
 

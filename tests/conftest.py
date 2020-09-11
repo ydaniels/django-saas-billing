@@ -33,7 +33,6 @@ def pytest_configure():
             'rest_framework',
             'rest_framework.authtoken',
             'tests',
-            'subscriptions',
             'subscriptions_api',
             'cryptocurrency_payment',
             'saas_billing'
@@ -65,7 +64,6 @@ def pytest_configure():
         },
         EMAIL_BACKEND='django.core.mail.backends.dummy.EmailBackend',
         SUBSCRIPTIONS_API_SUBSCRIPTIONTRANSACTION_MODEL='saas_billing.SubscriptionTransaction',
-        SUBSCRIPTIONS_API_USERSUBCRIPTION_MODEL='saas_billing.UserSubscription',
         STRIPE_PUBLISHABLE_KEY='pk_test_51HNm2TArjZeWGURq8enbhcYGLaxt3adfY561ZnohjqQ8n0bDqn1GcRd6ObHuI7IDhrxeC7b6ruZVoENmfKT3w9Wr00hAMrun0a',
         STRIPE_LIVE_KEY = 'sk_test_51HNm2TArjZeWGURqvcHDTQF5e32q9KezpGhAJGC36IKEeGfsCcWFwxr2O1oTEZvCGIPxiCJyNHviUFNkw04cQ6tP0064UD4Anp',
         PAYPAL_CLIENT_ID = 'AT-8PLSUWmfilh2zGNXA5QGqxniBvLjEG3fQJdvHZ44L7TDucKmcdWdVFEmGXpwAnu4vERown_esNiPj',
@@ -84,10 +82,10 @@ def pytest_configure():
         },
         SAAS_BILLING_AUTH = {
             'stripe': {
-                'PUBLISHABLE_KEY': 'pk_test_51HNm2TArjZeWGURq8enbhcYGLaxt3adfY561ZnohjqQ8n0bDqn1GcRd6ObHuI7IDhrxeC7b6ruZVoENmfKT3w9Wr00hAMrun0a',
+                'PUBLISHABLE_KEY': 'sk_test_51HNm2TArjZeWGURqvcHDTQF5e32q9KezpGhAJGC36IKEeGfsCcWFwxr2O1oTEZvCGIPxiCJyNHviUFNkw04cQ6tP0064UD4Anp',
                 'LIVE_KEY': 'sk_test_51HNm2TArjZeWGURqvcHDTQF5e32q9KezpGhAJGC36IKEeGfsCcWFwxr2O1oTEZvCGIPxiCJyNHviUFNkw04cQ6tP0064UD4Anp',
-                'CANCEL_URL': '',
-                'SUCCESS_URL': ''
+                'CANCEL_URL': 'https://google.com/cancel',
+                'SUCCESS_URL': 'https://google.com/success'
             },
             'paypal': {
                 'CLIENT_ID': 'AT-8PLSUWmfilh2zGNXA5QGqxniBvLjEG3fQJdvHZ44L7TDucKmcdWdVFEmGXpwAnu4vERown_esNiPj',

@@ -3,9 +3,9 @@ from unittest.mock import patch, PropertyMock
 from django.urls import reverse
 from django.contrib.auth.models import User
 from rest_framework.test import APITestCase
-from subscriptions_api.models import PlanCost, SubscriptionPlan, UserSubscription
+from subscriptions_api.models import PlanCost, SubscriptionPlan
 
-from saas_billing.models import StripeSubscriptionPlan, StripeSubscriptionPlanCost
+from saas_billing.models import StripeSubscriptionPlan, StripeSubscriptionPlanCost, StripeCustomer, StripeSubscription
 
 @pytest.mark.django_db
 class GatewayTest(APITestCase):
@@ -46,9 +46,8 @@ class GatewayTest(APITestCase):
     def test_update_stripe_subscription_plan(self, api_base):
         self.plan.plan_name = 'New Plan Name'
         self.plan.save()
-        self.stripe_plan.plan_ref = 'prod_FJLPlVXcbLq0Jt5'
-        self.stripe_plan.save()
         res = self.stripe_plan.create_or_update()
+        self.stripe_plan.save()
         self.plan.refresh_from_db()
         self.assertEqual(res['name'], self.plan.plan_name)
 
@@ -64,6 +63,7 @@ class GatewayTest(APITestCase):
     @patch('saas_billing.signals.delete_stripe_plan_cost_hook')
     @patch('stripe.api_base', new_callable=PropertyMock(return_value="http://localhost:12111"))
     def test_delete_stripe_subscription_cost(self, api_base, signals):
+        self.stripe_plan.create_or_update()
         res = self.stripe_cost.create_or_update()
         self.cost.refresh_from_db()
         self.stripe_cost.refresh_from_db()
@@ -79,3 +79,25 @@ class GatewayTest(APITestCase):
         rsp = self.client.post(cost_url, data={'gateway': 'stripe'})
         self.assertEqual(rsp.data['cost_id'], self.stripe_cost.cost_ref)
         self.assertIn('session_id', rsp.data)
+        print(rsp.data)
+
+    @patch('stripe.api_base', new_callable=PropertyMock(return_value="http://localhost:12111"))
+    def test_get_create_stripe_customer(self, api_base):
+        self.assertRaises(StripeCustomer.DoesNotExist, StripeCustomer.objects.get, user=self.user)
+        customer_id = self.stripe_cost.get_or_creeate_stripe_customer_id(self.user)
+        self.assertEqual(self.user.stripe_customer.customer_id,customer_id)
+
+    # @patch('stripe.api_base', new_callable=PropertyMock(return_value="http://localhost:12111"))
+    # def test_cancel_stripe_subscription(self, api_base):
+    #     subscription = self.cost.setup_user_subscription(self.user)
+    #     subscription.reference = 'stripe'
+    #     subscription.activate()
+    #     subscription.save()
+    #     StripeSubscription(subscription_ref='random_sub', subscription=subscription).save()
+    #     self.assertTrue(subscription.active)
+    #     cost_url = reverse('saas_billing:subscriptions-unsubscribe_user', kwargs={'pk': subscription.pk})
+    #     r = self.client.post(cost_url)
+    #     self.assertEqual(r.status_code, 200)
+    #     subscription.refresh_from_db()
+    #     self.assertFalse(subscription.active)
+    #     self.assertTrue(subscription.cancelled)

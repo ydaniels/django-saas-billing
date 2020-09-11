@@ -152,7 +152,8 @@ class PayPalClient():
             raise requests.ConnectionError(res.content)
     def cancel_subscription(self, subscription_id):
         url = '{}/billing/subscriptions/{}/cancel'.format(self.base_url, subscription_id)
-        res = self.s.post(url)
+        res = self.s.post(url, json={})
+        print(url)
         if res.status_code != 204:
             raise requests.ConnectionError(res.content)
         return True

@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from rest_framework.test import APITestCase
 from subscriptions_api.models import PlanCost, SubscriptionPlan, UserSubscription
 
-from saas_billing.models import PaypalSubscriptionPlan, PaypalSubscriptionPlanCost
+from saas_billing.models import PaypalSubscriptionPlan, PaypalSubscriptionPlanCost, PaypalSubscription
 
 @pytest.mark.django_db
 class GatewayTest(APITestCase):
@@ -63,3 +63,24 @@ class GatewayTest(APITestCase):
         self.assertEqual(rsp.data['cost_id'], self.paypal_cost.cost_ref)
         print(rsp.data)
         self.assertIn('payment_link', rsp.data)
+
+    # @patch('stripe.api_base', new_callable=PropertyMock(return_value="http://localhost:12111"))
+    # def test_cancel_stripe_subscription(self, api_base):
+    #     self.paypal_plan.create_or_update()
+    #     res = self.paypal_cost.create_or_update()
+    #     res = self.paypal_cost.setup_subscription(self.user)
+    #     print(res)
+    #     print('000000000000000000000')
+    #     subscription = UserSubscription.objects.get(pk=str(res['id']))
+    #     self.assertEqual(subscription.reference, 'paypal')
+    #     subscription.activate()
+    #     subscription.refresh_from_db()
+    #     self.assertTrue(subscription.active)
+    #     subscription.paypal_subscription.deactivate()
+    #
+    #     cost_url = reverse('saas_billing:subscriptions-unsubscribe_user', kwargs={'pk': subscription.pk})
+    #     r = self.client.post(cost_url)
+    #     self.assertEqual(r.status_code, 200)
+    #     subscription.refresh_from_db()
+    #     self.assertFalse(subscription.active)
+    #     self.assertTrue(subscription.cancelled)

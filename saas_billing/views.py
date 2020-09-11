@@ -9,14 +9,14 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST
 from rest_framework.decorators import action
 from subscriptions_api.views import PlanCostViewSet, UserSubscriptionViewSet
-from subscriptions_api.models import UserSubscription
+from saas_billing.models import UserSubscription
 from subscriptions_api.serializers import UserSubscriptionSerializer
 
 from cryptocurrency_payment.models import CryptoCurrencyPayment
 
 from saas_billing.serializers import CryptoCurrencyPaymentSerializer, SubscriptionTransactionSerializerPayment
 from saas_billing.provider import PayPalClient
-from saas_billing.models import SubscriptionTransaction, auto_activate_subscription, PaypalSubscription, StripeSubscription
+from saas_billing.models import StripeCustomer,SubscriptionTransaction, auto_activate_subscription, PaypalSubscription, StripeSubscription
 from saas_billing.app_settings import SETTINGS
 
 auth = SETTINGS['billing_auths']
@@ -45,9 +45,9 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
     @action(methods=['post'], url_name='unsubscribe_user', detail=True, permission_classes=[IsAuthenticated])
     def unsubscribe_user(self, request, pk=None):
         subscription = self.get_object()
-        if subscription.gateway:
+        if subscription.reference:
             #deactivate on gateway
-            subscription_model = saas_models[subscription.gateway]['subscription']
+            subscription_model = saas_models[subscription.reference]['subscription']
             Model = apps.get_model(subscription_model)
             obj = Model.objects.get(subscription=subscription)
             res = obj.deactivate()
@@ -96,7 +96,6 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
             subscription = PaypalSubscription.objects.get(subscription_ref=subscription_id).subscription
             if event_type == 'BILLING.SUBSCRIPTION.ACTIVATED':
                 subscription.activate()
-                subscription.record_transaction()
                 subscription.notify_activate()
             elif event_type == 'BILLING.SUBSCRIPTION.SUSPENDED':
                 subscription.deactivate()
@@ -119,12 +118,16 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
                 pass
             return Response({})
 
-    @action(methods=['get'], url_name='stripe_gateway', detail=False, permission_classes=[AllowAny])
+    def get_local_customer(self, customer):
+        stripe_customer = StripeCustomer.objects.get(customer_id=customer)
+        return stripe_customer
+
+    @action(methods=['post'], url_name='stripe_gateway', detail=False, permission_classes=[AllowAny])
     def stripe_gateway(self, request):
         payload = request.data
         try:
             event = stripe.Event.construct_from(
-                json.loads(payload), auth['stripe']['LIVE_KEY']
+                payload, auth['stripe']['LIVE_KEY']
             )
         except ValueError as e:
             # Invalid payload
@@ -133,12 +136,12 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
             # Handle the event
         data = event.data.object
         if 'customer.subscription' in event.type :
-            subscription_id = data.id
-            subscription = StripeSubscription.objects.get(subscription_ref=subscription_id).subscription
+            customer = data.customer
+            stripe_costomer = self.get_local_customer(customer=customer)
+            subscription = stripe_costomer.get_or_create_subscription(request.user, data)
             subscription_status = data['status']
             if subscription_status == 'active' or subscription_status == 'trialing':
                 subscription.activate()
-                subscription.record_transaction()
                 subscription.notify_new()
             elif subscription_status == 'incomplete':
                 subscription.notify_payment_error()
@@ -155,7 +158,8 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
                 subscription.notify_expired()
         elif 'invoice' in event.type:
             invoice = event.data.object  # contains a stripe.PaymentMethod
-            subscription = StripeSubscription.objects.get(subscription_ref=invoice.subscription).subscription
+            stripe_costomer = self.get_local_customer(customer=invoice.customer)
+            subscription = stripe_costomer.get_or_create_subscription(request.user, invoice)
             if event.type == 'invoice.paid':
                 subscription.notify_payment_success()
             elif event.type == 'invoice.created':
@@ -201,7 +205,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
             subscription.notify_deactivate(activate_new=True)
         subscription = plan_cost.setup_user_subscription(request.user, active=False, no_multipe_subscription=True,
                                                          resuse=True)
-        subscription.gateway = crypto
+        subscription.reference = crypto
         subscription.save()
         transaction = auto_activate_subscription(subscription, amount=cost)
         data = {'subscription': str(subscription.pk), 'transaction': str(transaction.pk), 'payment': None}

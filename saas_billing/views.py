@@ -128,7 +128,7 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
             event = stripe.Event.construct_from(
                 payload, auth['stripe']['LIVE_KEY']
             )
-        except ValueError as e:
+        except ValueError:
             # Invalid payload
             return Response(status=HTTP_400_BAD_REQUEST)
 

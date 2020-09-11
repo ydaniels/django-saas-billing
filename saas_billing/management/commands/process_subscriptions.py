@@ -4,6 +4,10 @@ from django.utils import timezone
 from datetime import timedelta
 from saas_billing.models import UserSubscription
 from saas_billing.models import auto_activate_subscription
+from saas_billing.app_settings import SETTINGS
+
+billing_models = SETTINGS['billing_models']
+payment_references = [key for key in billing_models.keys()]
 
 
 class Manager():
@@ -13,7 +17,7 @@ class Manager():
         expired_subscriptions = UserSubscription.objects.filter(
             Q(active=True) & Q(cancelled=False)
             & Q(date_billing_end__lte=date)
-        )
+        ).exclude(reference__in=payment_references)
 
         for subscription in expired_subscriptions:
             subscription.deactivate()
@@ -24,7 +28,7 @@ class Manager():
         due_subscriptions = UserSubscription.objects.filter(
             Q(active=True) & Q(due=False)
             & Q(date_billing_next__lte=date)
-        )
+        ).exclude(reference__in=payment_references)
         for subscription in due_subscriptions:
 
             transaction = auto_activate_subscription(subscription, amount=subscription.plan_cost.cost,
@@ -44,7 +48,7 @@ class Manager():
             Q(active=False) & Q(cancelled=False)
             & Q(date_billing_start__lte=date
                 )
-        )
+        ).exclude(reference__in=payment_references)
 
     def process_subscriptions(self):
         """Calls all required subscription processing functions."""

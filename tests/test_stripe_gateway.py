@@ -54,7 +54,6 @@ class GatewayTest(APITestCase):
     @patch('stripe.api_base', new_callable=PropertyMock(return_value="http://localhost:12111"))
     def test_stripe_subscription_cost(self, api_base):
         res = self.stripe_cost.create_or_update()
-        print(res)
         self.cost.refresh_from_db()
         self.stripe_cost.refresh_from_db()
         self.assertEqual(res.id, self.stripe_cost.cost_ref)
@@ -79,7 +78,6 @@ class GatewayTest(APITestCase):
         rsp = self.client.post(cost_url, data={'gateway': 'stripe'})
         self.assertEqual(rsp.data['cost_id'], self.stripe_cost.cost_ref)
         self.assertIn('session_id', rsp.data)
-        print(rsp.data)
 
     @patch('stripe.api_base', new_callable=PropertyMock(return_value="http://localhost:12111"))
     def test_get_create_stripe_customer(self, api_base):

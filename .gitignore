@@ -20,3 +20,4 @@ local/
 !.travis.yml
 
 /venv/
+saas_billing/settings.py

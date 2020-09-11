@@ -9,15 +9,18 @@ class CryptoCurrencyPaymentSerializer(serializers.ModelSerializer):
         model = CryptoCurrencyPayment
         fields = '__all__'
 
+
 class PaypalSubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = PaypalSubscription
         fields = '__all__'
 
+
 class StripeSubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = StripeSubscription
         fields = '__all__'
+
 
 class SubscriptionTransactionSerializerPayment(serializers.ModelSerializer):
     """SubscriptionTransaction serializer"""

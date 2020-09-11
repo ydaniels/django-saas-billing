@@ -12,7 +12,7 @@ from saas_billing.provider import PayPalClient
 from saas_billing.app_settings import SETTINGS
 
 auth = SETTINGS['billing_auths']
-print(auth)
+
 
 @receiver(post_save, sender=CryptoCurrencyPayment, dispatch_uid='update_user_subscription')
 def save_profile(sender, instance, **kwargs):
@@ -52,9 +52,11 @@ def delete_stripe_plan_cost_hook(sender, instance, using, **kwargs):
         if obj.active is not False:
             raise ProtectedError
 
+
 @receiver(pre_delete, sender=PaypalSubscriptionPlanCost)
 def deactivate_paypal_plan_cost(sender, instance, using, **kwargs):
     if instance.cost_ref:
-        paypal = PayPalClient(auth['paypal']['CLIENT_ID'], auth['paypal']['CLIENT_SECRET'], token=auth['paypal']['TOKEN'],
-                      env=auth['paypal']['ENV'])
+        paypal = PayPalClient(auth['paypal']['CLIENT_ID'], auth['paypal']['CLIENT_SECRET'],
+                              token=auth['paypal']['TOKEN'],
+                              env=auth['paypal']['ENV'])
         paypal.deactivate(instance.cost_ref)

@@ -61,7 +61,6 @@ class GatewayTest(APITestCase):
         cost_url = reverse('saas_billing:plan-costs-init_gateway_subscription', kwargs={'pk': self.cost.pk})
         rsp = self.client.post(cost_url, data={'gateway': 'paypal'})
         self.assertEqual(rsp.data['cost_id'], self.paypal_cost.cost_ref)
-        print(rsp.data)
         self.assertIn('payment_link', rsp.data)
 
     # @patch('stripe.api_base', new_callable=PropertyMock(return_value="http://localhost:12111"))

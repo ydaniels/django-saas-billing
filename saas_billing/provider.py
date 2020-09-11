@@ -1,4 +1,8 @@
+import logging
+
+logger = logging.getLogger(__name__)
 import requests
+
 
 class PayPalClient():
 
@@ -10,13 +14,14 @@ class PayPalClient():
 
         self.s = requests.Session()
         if token:
-            self.s.headers.update({'Authorization': 'Bearer %s'%token})
+            self.s.headers.update({'Authorization': 'Bearer %s' % token})
         else:
-            res = self.s.post(self.base_url+'/oauth2/token', auth=(key, secret), data={'grant_type':'client_credentials'})
+            res = self.s.post(self.base_url + '/oauth2/token', auth=(key, secret),
+                              data={'grant_type': 'client_credentials'})
 
             token = res.json()['access_token']
             self.s.headers.update({'Authorization': 'Bearer %s' % token})
-            #print(self.s.headers)
+            # print(self.s.headers)
 
     def create_or_update_product(self, product_id=None, name='', description='', sub_type="SERVICE",
                                  category="SOFTWARE"):
@@ -70,21 +75,21 @@ class PayPalClient():
                 "sequence": 1,
                 "total_cycles": 1
             }, )
-            data["billing_cycles"].append( {
-                    "frequency": {
-                        "interval_unit": interval_unit,
-                        "interval_count": interval_count
-                    },
-                    "tenure_type": "REGULAR",
-                    "sequence": 2,
-                    "total_cycles": 0,
-                    "pricing_scheme": {
-                        "fixed_price": {
-                            "value": amount,
-                            "currency_code": currency.upper()
-                        }
+            data["billing_cycles"].append({
+                "frequency": {
+                    "interval_unit": interval_unit,
+                    "interval_count": interval_count
+                },
+                "tenure_type": "REGULAR",
+                "sequence": 2,
+                "total_cycles": 0,
+                "pricing_scheme": {
+                    "fixed_price": {
+                        "value": amount,
+                        "currency_code": currency.upper()
                     }
-                })
+                }
+            })
         else:
             data["billing_cycles"].append({
                 "frequency": {
@@ -111,7 +116,8 @@ class PayPalClient():
             res = self.s.post(url, json=data)
         return res.json()
 
-    def create_subscription(self, plan_id, email, first_name='', last_name='', return_url=None, cancel_url=None, start_time=None):
+    def create_subscription(self, plan_id, email, first_name='', last_name='', return_url=None, cancel_url=None,
+                            start_time=None):
         url = '{}/billing/subscriptions'.format(self.base_url)
         data = {
             "plan_id": plan_id,
@@ -150,13 +156,14 @@ class PayPalClient():
         res = self.s.post(url)
         if res.status_code != 204:
             raise requests.ConnectionError(res.content)
+
     def cancel_subscription(self, subscription_id):
         url = '{}/billing/subscriptions/{}/cancel'.format(self.base_url, subscription_id)
         res = self.s.post(url, json={})
-        print(url)
         if res.status_code != 204:
             raise requests.ConnectionError(res.content)
         return True
+
     def update_plan_pricing(self, plan_id, amount, currency='USD'):
         url = '{}/billing/plans/{}/update-pricing-schemes'.format(self.base_url, plan_id)
 
@@ -174,11 +181,11 @@ class PayPalClient():
         }
         res = self.s.post(url, json=data)
         if res.status_code != 204:
-            raise requests.ConnectionError(res.content)
+            logger.exception(res.content)
 
     def verify_webhook(self, data):
         url = '{}/notifications/verify-webhook-signature'.format(self.base_url)
         r = self.s.post(url, data=data)
         if r.status_code == 200 and r.json()["verification_status"] == "SUCCESS":
             return True
-        return  False
+        return False

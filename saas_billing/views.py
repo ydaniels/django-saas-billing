@@ -1,8 +1,6 @@
 # Create your views here.
 import stripe
-import json
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from django.apps import AppConfig
 from django.apps import apps
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework.response import Response
@@ -16,11 +14,12 @@ from cryptocurrency_payment.models import CryptoCurrencyPayment
 
 from saas_billing.serializers import CryptoCurrencyPaymentSerializer, SubscriptionTransactionSerializerPayment
 from saas_billing.provider import PayPalClient
-from saas_billing.models import StripeCustomer,SubscriptionTransaction, auto_activate_subscription, PaypalSubscription, StripeSubscription
+from saas_billing.models import StripeCustomer, SubscriptionTransaction, auto_activate_subscription, PaypalSubscription
 from saas_billing.app_settings import SETTINGS
 
 auth = SETTINGS['billing_auths']
 saas_models = SETTINGS['billing_models']
+
 
 class SubscriptionTransactionPaymentViewSet(ReadOnlyModelViewSet):
     serializer_class = SubscriptionTransactionSerializerPayment
@@ -46,7 +45,7 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
     def unsubscribe_user(self, request, pk=None):
         subscription = self.get_object()
         if subscription.reference:
-            #deactivate on gateway
+            # deactivate on gateway
             subscription_model = saas_models[subscription.reference]['subscription']
             Model = apps.get_model(subscription_model)
             obj = Model.objects.get(subscription=subscription)
@@ -135,7 +134,7 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
 
             # Handle the event
         data = event.data.object
-        if 'customer.subscription' in event.type :
+        if 'customer.subscription' in event.type:
             customer = data.customer
             stripe_costomer = self.get_local_customer(customer=customer)
             subscription = stripe_costomer.get_or_create_subscription(request.user, data)
@@ -148,7 +147,7 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
             elif subscription_status == 'incomplete_expired':
                 subscription.deactivate()
                 subscription.notify_deactivate()
-            elif subscription_status == 'past_due'  or subscription_status == 'unpaid':
+            elif subscription_status == 'past_due' or subscription_status == 'unpaid':
                 subscription.notify_due()
             elif subscription_status == 'expired':
                 subscription.deactivate()
@@ -173,6 +172,7 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
 
         return Response({})
 
+
 class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
 
     @action(methods=['post'], url_name='subscribe_user_crypto', detail=True, permission_classes=[IsAuthenticated])
@@ -191,7 +191,6 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
             unused_balance = subscription.unused_daily_balance
             if unused_balance > 0:
                 cost = float(cost) - unused_balance
-                print(cost, '0p')
                 if cost == 0 or cost > 0:
                     subscription.deactivate()
                 else:
@@ -223,7 +222,6 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         cost = self.get_object()
         gateway = self.request.data['gateway']
         cost_model_str = SETTINGS['billing_models'][gateway]['cost']
-        print(cost_model_str)
         Model = apps.get_model(cost_model_str)
         external_cost = Model.objects.get(cost=cost)
         data = external_cost.setup_subscription(request.user)

@@ -68,7 +68,7 @@ class StripeCustomer(models.Model):
         try:
             return StripeSubscription.objects.get(subscription_ref=stripe_sub_obj.id).subscription
         except StripeSubscription.DoesNotExist:
-            cost_ref = stripe_sub_obj.items.data[0].price.id
+            cost_ref = stripe_sub_obj.id
             cost = StripeSubscriptionPlanCost.objects.get(cost_ref=cost_ref).cost
             subscription = cost.setup_user_subscription(self.user, active=False, no_multipe_subscription=True,
                                                         resuse=True)

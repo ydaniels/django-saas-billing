@@ -137,7 +137,7 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
         if 'customer.subscription' in event.type:
             customer = data.customer
             stripe_costomer = self.get_local_customer(customer=customer)
-            subscription = stripe_costomer.get_or_create_subscription(request.user, data)
+            subscription = stripe_costomer.get_or_create_subscription(data)
             subscription_status = data['status']
             if subscription_status == 'active' or subscription_status == 'trialing':
                 subscription.activate()
@@ -155,18 +155,18 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
             elif subscription_status == 'cancelled' or event.type == 'customer.subscription.deleted':
                 subscription.deactivate()
                 subscription.notify_expired()
-        elif 'invoice' in event.type:
-            invoice = event.data.object  # contains a stripe.PaymentMethod
-            stripe_costomer = self.get_local_customer(customer=invoice.customer)
-            subscription = stripe_costomer.get_or_create_subscription(request.user, invoice)
-            if event.type == 'invoice.paid':
-                subscription.notify_payment_success()
-            elif event.type == 'invoice.created':
-                subscription.notify_new()
-            elif event.type == 'invoice.upcoming':
-                subscription.notify_due()
-            elif event.type == 'invoice.payment_failed':
-                subscription.notify_payment_error()
+        # elif 'invoice' in event.type:
+        #     invoice = event.data.object  # contains a stripe.PaymentMethod
+        #     stripe_costomer = self.get_local_customer(customer=invoice.customer)
+        #     subscription = stripe_costomer.get_or_create_subscription(request.user, invoice)
+        #     if event.type == 'invoice.paid':
+        #         subscription.notify_payment_success()
+        #     elif event.type == 'invoice.created':
+        #         subscription.notify_new()
+        #     elif event.type == 'invoice.upcoming':
+        #         subscription.notify_due()
+        #     elif event.type == 'invoice.payment_failed':
+        #         subscription.notify_payment_error()
         else:
             return Response(status=HTTP_400_BAD_REQUEST)
 

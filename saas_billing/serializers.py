@@ -37,9 +37,9 @@ class SubscriptionTransactionSerializerPayment(serializers.ModelSerializer):
 
     def get_subscription_reference(self, obj):
         if obj.subscription.reference == 'paypal':
-            return PaypalSubscriptionSerializer(obj.subscription.paypal_subscription)
+            return PaypalSubscriptionSerializer(obj.subscription.paypal_subscription).data
         elif obj.subscription.reference == 'stripe':
-            return StripeSubscriptionSerializer(obj.subscription.stripe_subscription)
+            return StripeSubscriptionSerializer(obj.subscription.stripe_subscription).data
         else:
             return {}
 

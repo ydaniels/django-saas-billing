@@ -64,19 +64,19 @@ class StripeCustomer(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def get_or_create_subscription(self, user, stripe_sub_obj):
+    def get_or_create_subscription(self, stripe_sub_obj):
         try:
             return StripeSubscription.objects.get(subscription_ref=stripe_sub_obj.id).subscription
         except StripeSubscription.DoesNotExist:
             cost_ref = stripe_sub_obj.items.data[0].price.id
             cost = StripeSubscriptionPlanCost.objects.get(cost_ref=cost_ref).cost
-            subscription = cost.setup_user_subscription(user, active=False, no_multipe_subscription=True,
+            subscription = cost.setup_user_subscription(self.user, active=False, no_multipe_subscription=True,
                                                         resuse=True)
             subscription.notify_new()
             subscription.record_transaction()
             subscription.reference = 'stripe'
             subscription.save()
-            StripeSubscription(subscription_ref=stripe_sub_obj.items.data[0].subscription,
+            StripeSubscription(subscription_ref=stripe_sub_obj.id,
                                subscription=subscription).save()
             return subscription
 
@@ -136,9 +136,9 @@ class StripeSubscriptionPlanCost(models.Model):
 
 
 class StripeSubscription(models.Model):
-    subscription = models.OneToOneField(UserSubscription, on_delete=models.CASCADE, unique=True,
+    subscription = models.OneToOneField(UserSubscription, on_delete=models.CASCADE,
                                         related_name='stripe_subscription')
-    subscription_ref = models.CharField(max_length=100)
+    subscription_ref = models.CharField(max_length=100, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

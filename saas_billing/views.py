@@ -82,7 +82,7 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
             'transmission_sig': request.headers['PAYPAL-TRANSMISSION-SIG'],
             'transmission_time': request.headers['PAYPAL-TRANSMISSION-TIME'],
             'webhook_id': auth['paypal']['WEB_HOOK_ID'],
-            'webhook_event': event_type
+            'webhook_event': request.data
         }
 
         paypal = PayPalClient(auth['paypal']['CLIENT_ID'], auth['paypal']['CLIENT_SECRET'],
@@ -139,11 +139,14 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
             stripe_costomer = self.get_local_customer(customer=customer)
             subscription = stripe_costomer.get_or_create_subscription(data)
             subscription_status = data['status']
+
             if subscription_status == 'active' or subscription_status == 'trialing':
+                subscription.record_transaction()
                 subscription.activate()
-                subscription.notify_new()
             elif subscription_status == 'incomplete':
                 subscription.notify_payment_error()
+            elif subscription_status == 'trial_will_end':
+                subscription.notify_due()
             elif subscription_status == 'incomplete_expired':
                 subscription.deactivate()
                 subscription.notify_deactivate()
@@ -152,7 +155,7 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
             elif subscription_status == 'expired':
                 subscription.deactivate()
                 subscription.notify_expired()
-            elif subscription_status == 'cancelled' or event.type == 'customer.subscription.deleted':
+            elif subscription_status == 'canceled' or event.type == 'customer.subscription.deleted':
                 subscription.deactivate()
                 subscription.notify_expired()
         # elif 'invoice' in event.type:

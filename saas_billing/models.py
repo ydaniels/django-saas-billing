@@ -68,16 +68,13 @@ class StripeCustomer(models.Model):
         try:
             return StripeSubscription.objects.get(subscription_ref=stripe_sub_obj.id).subscription
         except StripeSubscription.DoesNotExist:
-            cost_ref = stripe_sub_obj.id
+            cost_ref =  stripe_sub_obj['plan']['id']
             cost = StripeSubscriptionPlanCost.objects.get(cost_ref=cost_ref).cost
             subscription = cost.setup_user_subscription(self.user, active=False, no_multipe_subscription=True,
                                                         resuse=True)
-            subscription.notify_new()
-            subscription.record_transaction()
             subscription.reference = 'stripe'
             subscription.save()
-            StripeSubscription(subscription_ref=stripe_sub_obj.id,
-                               subscription=subscription).save()
+            StripeSubscription.objects.update_or_create(subscription=subscription, defaults={'subscription_ref':  stripe_sub_obj.id })
             return subscription
 
 
@@ -144,7 +141,7 @@ class StripeSubscription(models.Model):
 
     def deactivate(self):
         res = stripe.Subscription.delete(self.subscription_ref, invoice_now=True, prorate=True)
-        if res.status == 'cancelled':
+        if res.status == 'canceled':
             return True
 
     def activate(self):
@@ -231,7 +228,7 @@ class PaypalSubscriptionPlanCost(models.Model):
         subscription.save()
         subscription.notify_new()
         subscription.record_transaction()
-        PaypalSubscription(subscription=subscription, subscription_ref=res['id'], payment_link=subscription_link).save()
+        PaypalSubscription.objects.update_or_create(subscription=subscription, defaults={'subscription_ref': res['id'],'payment_link':subscription_link})
         return {'cost_id': self.cost_ref, 'payment_link': subscription_link, 'subscription_ref': res['id'],
                 'id': subscription.pk}
 

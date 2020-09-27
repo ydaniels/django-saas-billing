@@ -8,7 +8,6 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('subscriptions_api', '0005_auto_20200911_1101'),
         migrations.swappable_dependency(settings.SUBSCRIPTIONS_API_USERSUBSCRIPTION_MODEL),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ('saas_billing', '0001_initial'),

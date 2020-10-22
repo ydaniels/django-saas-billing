@@ -12,8 +12,10 @@ from saas_billing.app_settings import SETTINGS
 auth = SETTINGS['billing_auths']
 
 stripe.api_key = auth['stripe']['LIVE_KEY']
-paypal = PayPalClient(auth['paypal']['CLIENT_ID'], auth['paypal']['CLIENT_SECRET'], token=auth['paypal']['TOKEN'],
+def get_paypal_client():
+    paypal = PayPalClient(auth['paypal']['CLIENT_ID'], auth['paypal']['CLIENT_SECRET'], token=auth['paypal']['TOKEN'],
                       env=auth['paypal']['ENV'])
+    return paypal
 
 
 def auto_activate_subscription(subscription, amount, transaction_date=None):
@@ -156,6 +158,7 @@ class PaypalSubscriptionPlan(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def create_or_update(self):
+        paypal = get_paypal_client()
         if not self.plan_ref:
             res = paypal.create_or_update_product(name=self.plan.plan_name, description=self.plan.plan_description)
             self.plan_ref = res['id']
@@ -176,6 +179,7 @@ class PaypalSubscriptionPlanCost(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def create_or_update(self):
+        paypal = get_paypal_client()
         if not self.cost_ref:
             trial = True
             if self.cost.plan.trial_period > 0 and self.cost.plan.trial_period < 7:
@@ -207,14 +211,17 @@ class PaypalSubscriptionPlanCost(models.Model):
         return res
 
     def activate(self):
+        paypal = get_paypal_client()
         if self.cost_ref:
             return paypal.activate(self.cost_ref)
 
     def deactivate(self):
+        paypal = get_paypal_client()
         if self.cost_ref:
             return paypal.deactivate(self.cost_ref)
 
     def setup_subscription(self, user):
+        paypal = get_paypal_client()
         res = paypal.create_subscription(self.cost_ref, user.email, user.first_name, user.last_name,
                                          return_url=auth['paypal']['SUCCESS_URL'],
                                          cancel_url=auth['paypal']['CANCEL_URL'])
@@ -246,6 +253,7 @@ class PaypalSubscription(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def deactivate(self):
+        paypal = get_paypal_client()
         return paypal.cancel_subscription(self.subscription_ref)
 
 

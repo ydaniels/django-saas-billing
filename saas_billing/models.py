@@ -240,7 +240,7 @@ class PaypalSubscriptionPlanCost(models.Model):
         subscription.reference = 'paypal'
         subscription.save()
         subscription.notify_new()
-        subscription.record_transaction()
+        #subscription.record_transaction()
         PaypalSubscription.objects.update_or_create(subscription=subscription, defaults={'subscription_ref': res['id'],'payment_link':subscription_link})
         return {'cost_id': self.cost_ref, 'payment_link': subscription_link, 'subscription_ref': res['id'],
                 'id': subscription.pk}

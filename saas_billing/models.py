@@ -90,7 +90,7 @@ class StripeSubscriptionPlanCost(models.Model):
         if self.cost.cost <= 0:
             #Dont create plan with 0 cost they are free plan
             return
-        if not self.cost_ref:
+        if not self.cost_ref and self.cost.plan.stripe_subscription_plan.plan_ref:
             res = stripe.Price.create(unit_amount_decimal=self.cost.cost * 100, currency="usd", nickname=str(self.cost),
                                       recurring={"interval": self.cost.get_recurrence_unit_display(),
                                                  'interval_count': self.cost.recurrence_period},
@@ -104,7 +104,7 @@ class StripeSubscriptionPlanCost(models.Model):
                                     self.cost.recurrence_period,
                                     self.cost_ref)
 
-    def get_or_creeate_stripe_customer_id(self, user):
+    def get_or_create_stripe_customer_id(self, user):
         try:
             customer_id = StripeCustomer.objects.get(user=user).customer_id
         except StripeCustomer.DoesNotExist:
@@ -118,7 +118,7 @@ class StripeSubscriptionPlanCost(models.Model):
 
     def pre_process_subscription(self, user):
         auth = SETTINGS['billing_auths']['stripe']
-        customer = self.get_or_creeate_stripe_customer_id(user)
+        customer = self.get_or_create_stripe_customer_id(user)
         session = stripe.checkout.Session.create(
             cancel_url=auth['CANCEL_URL'],
             mode='subscription',

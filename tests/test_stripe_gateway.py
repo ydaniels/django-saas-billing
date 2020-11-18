@@ -82,7 +82,7 @@ class GatewayTest(APITestCase):
     @patch('stripe.api_base', new_callable=PropertyMock(return_value="http://localhost:12111"))
     def test_get_create_stripe_customer(self, api_base):
         self.assertRaises(StripeCustomer.DoesNotExist, StripeCustomer.objects.get, user=self.user)
-        customer_id = self.stripe_cost.get_or_creeate_stripe_customer_id(self.user)
+        customer_id = self.stripe_cost.get_or_create_stripe_customer_id(self.user)
         self.assertEqual(self.user.stripe_customer.customer_id,customer_id)
 
     # @patch('stripe.api_base', new_callable=PropertyMock(return_value="http://localhost:12111"))

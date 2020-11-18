@@ -87,6 +87,9 @@ class StripeSubscriptionPlanCost(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def create_or_update(self):
+        if self.cost.cost <= 0:
+            #Dont create plan with 0 cost they are free plan
+            return
         if not self.cost_ref:
             res = stripe.Price.create(unit_amount_decimal=self.cost.cost * 100, currency="usd", nickname=str(self.cost),
                                       recurring={"interval": self.cost.get_recurrence_unit_display(),
@@ -179,6 +182,9 @@ class PaypalSubscriptionPlanCost(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def create_or_update(self):
+        if self.cost.cost <= 0:
+            #Dont create plan with 0 cost they are free plan
+            return
         paypal = get_paypal_client()
         if not self.cost_ref:
             trial = True

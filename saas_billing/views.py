@@ -43,7 +43,7 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
     @action(methods=['post'], url_name='unsubscribe_user', detail=True, permission_classes=[IsAuthenticated])
     def unsubscribe_user(self, request, pk=None):
         subscription = self.get_object()
-        if subscription.reference:
+        if subscription.reference and subscription.reference in saas_models:
             # deactivate on gateway
             subscription_model = saas_models[subscription.reference]['subscription']
             Model = apps.get_model(subscription_model)
@@ -52,8 +52,6 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
             if res is True:
                 subscription.deactivate(activate_default=True)
         else:
-            if subscription.unused_daily_balance > 0:
-                subscription.record_transaction(amount=-1 * subscription.unused_daily_balance)
             subscription.deactivate(activate_default=True)
             subscription.notify_deactivate()
         return Response({'status': True})

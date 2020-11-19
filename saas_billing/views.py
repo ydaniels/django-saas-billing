@@ -1,5 +1,6 @@
 # Create your views here.
 import stripe
+import logging
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.apps import apps
 from rest_framework.viewsets import ReadOnlyModelViewSet
@@ -19,6 +20,7 @@ from saas_billing.app_settings import SETTINGS
 auth = SETTINGS['billing_auths']
 saas_models = SETTINGS['billing_models']
 
+_logger = logging.getLogger(__name__)
 
 class SubscriptionTransactionPaymentViewSet(ReadOnlyModelViewSet):
     serializer_class = SubscriptionTransactionSerializerPayment
@@ -89,10 +91,15 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
         if req is True:
             data = request.data["resource"]
             subscription_id = data['id']
-            subscription = PaypalSubscription.objects.get(subscription_ref=subscription_id).subscription
+            try:
+                subscription = PaypalSubscription.objects.get(subscription_ref=subscription_id).subscription
+            except PaypalSubscription.DoesNotExist:
+                _logger.error("Got webhook payload for subscription but cannot find obj ")
+                _logger.error(data)
+                return Response({})
             if event_type == 'BILLING.SUBSCRIPTION.ACTIVATED':
                 subscription.activate(no_multipe_subscription=True)
-                subscription.record_transaction()
+                subscription.record_transaction(paid=True)
                 subscription.notify_activate()
             elif event_type == 'BILLING.SUBSCRIPTION.SUSPENDED':
                 subscription.deactivate(activate_default=True)
@@ -139,7 +146,7 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
             subscription_status = data['status']
 
             if subscription_status == 'active' or subscription_status == 'trialing':
-                subscription.record_transaction()
+                subscription.record_transaction(paid=True)
                 subscription.activate(no_multipe_subscription=True)
             elif subscription_status == 'incomplete':
                 subscription.notify_payment_error()

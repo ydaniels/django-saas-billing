@@ -1,4 +1,5 @@
 import stripe
+import logging
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericRelation
@@ -8,6 +9,8 @@ from cryptocurrency_payment.models import CryptoCurrencyPayment
 from cryptocurrency_payment.models import create_new_payment
 from saas_billing.provider import PayPalClient
 from saas_billing.app_settings import SETTINGS
+
+_logger = logging.getLogger(__name__)
 
 auth = SETTINGS['billing_auths']
 
@@ -247,7 +250,8 @@ class PaypalSubscriptionPlanCost(models.Model):
         subscription.save()
         subscription.notify_new()
         #subscription.record_transaction()
-        PaypalSubscription.objects.update_or_create(subscription=subscription, defaults={'subscription_ref': res['id'],'payment_link':subscription_link})
+        obj, created = PaypalSubscription.objects.update_or_create(subscription=subscription, defaults={'subscription_ref': res['id'],'payment_link':subscription_link})
+        _logger.debug("Created or updated subscription for paypal sub=%s created=%s obj=%s subscription=%s ",res['id'], created, obj, subscription)
         return {'cost_id': self.cost_ref, 'payment_link': subscription_link, 'subscription_ref': res['id'],
                 'id': subscription.pk}
 

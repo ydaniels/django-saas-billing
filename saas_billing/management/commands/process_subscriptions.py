@@ -20,7 +20,7 @@ class Manager():
         ).exclude(reference__in=payment_references)
 
         for subscription in expired_subscriptions:
-            subscription.deactivate()
+            subscription.deactivate(activate_default=True)
             subscription.notify_expired()
 
     def process_one_week_due_subscriptions(self, date):
@@ -34,7 +34,7 @@ class Manager():
             transaction = auto_activate_subscription(subscription, amount=subscription.plan_cost.cost,
                                                      transaction_date=subscription.date_billing_next)
             if transaction.amount <= 0:
-                subscription.activate(subscription_date=subscription.date_billing_next)
+                subscription.activate(subscription_date=subscription.date_billing_next, no_multiple_subscription=True)
                 subscription.notify_activate(auto=True)
             else:
                 crypto = self.get_previous_transaction_crypto(subscription, )

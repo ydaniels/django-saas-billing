@@ -9,7 +9,6 @@ from rest_framework.decorators import action
 from subscriptions_api.views import PlanCostViewSet, UserSubscriptionViewSet
 from saas_billing.models import UserSubscription
 from subscriptions_api.serializers import UserSubscriptionSerializer
-
 from cryptocurrency_payment.models import CryptoCurrencyPayment
 
 from saas_billing.serializers import CryptoCurrencyPaymentSerializer, SubscriptionTransactionSerializerPayment
@@ -51,11 +50,11 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
             obj = Model.objects.get(subscription=subscription)
             res = obj.deactivate()
             if res is True:
-                subscription.deactivate()
+                subscription.deactivate(activate_default=True)
         else:
             if subscription.unused_daily_balance > 0:
                 subscription.record_transaction(amount=-1 * subscription.unused_daily_balance)
-            subscription.deactivate()
+            subscription.deactivate(activate_default=True)
             subscription.notify_deactivate()
         return Response({'status': True})
 
@@ -94,17 +93,17 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
             subscription_id = data['id']
             subscription = PaypalSubscription.objects.get(subscription_ref=subscription_id).subscription
             if event_type == 'BILLING.SUBSCRIPTION.ACTIVATED':
-                subscription.activate()
+                subscription.activate(no_multipe_subscription=True)
                 subscription.record_transaction()
                 subscription.notify_activate()
             elif event_type == 'BILLING.SUBSCRIPTION.SUSPENDED':
-                subscription.deactivate()
+                subscription.deactivate(activate_default=True)
                 subscription.notify_deactivate()
             elif event_type == 'BILLING.SUBSCRIPTION.CANCELLED' or event_type == 'BILLING.SUBSCRIPTION.DELETED':
                 subscription.notify_deactivate()
-                subscription.deactivate()
+                subscription.deactivate(activate_default=True)
             elif event_type == 'BILLING.SUBSCRIPTION.EXPIRED':
-                subscription.deactivate()
+                subscription.deactivate(activate_default=True)
                 subscription.notify_expired()
             elif event_type == 'BILLING.SUBSCRIPTION.PAYMENT.FAILED':
                 subscription.notify_payment_error()
@@ -143,21 +142,21 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
 
             if subscription_status == 'active' or subscription_status == 'trialing':
                 subscription.record_transaction()
-                subscription.activate()
+                subscription.activate(no_multipe_subscription=True)
             elif subscription_status == 'incomplete':
                 subscription.notify_payment_error()
             elif subscription_status == 'trial_will_end':
                 subscription.notify_due()
             elif subscription_status == 'incomplete_expired':
-                subscription.deactivate()
+                subscription.deactivate(activate_default=True)
                 subscription.notify_deactivate()
             elif subscription_status == 'past_due' or subscription_status == 'unpaid':
                 subscription.notify_due()
             elif subscription_status == 'expired':
-                subscription.deactivate()
+                subscription.deactivate(activate_default=True)
                 subscription.notify_expired()
             elif subscription_status == 'canceled' or event.type == 'customer.subscription.deleted':
-                subscription.deactivate()
+                subscription.deactivate(activate_default=True)
                 subscription.notify_expired()
         # elif 'invoice' in event.type:
         #     invoice = event.data.object  # contains a stripe.PaymentMethod
@@ -205,7 +204,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
 
             else:
                 subscription.deactivate()
-            subscription.notify_deactivate(activate_new=True)
+            subscription.notify_deactivate()
         subscription = plan_cost.setup_user_subscription(request.user, active=False, no_multipe_subscription=True,
                                                          resuse=True)
         subscription.reference = crypto

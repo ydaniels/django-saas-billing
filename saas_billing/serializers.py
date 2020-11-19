@@ -28,6 +28,7 @@ class SubscriptionTransactionSerializerPayment(serializers.ModelSerializer):
     cryptocurrency_payments = CryptoCurrencyPaymentSerializer(many=True, read_only=True)
     subscription_name = serializers.SerializerMethodField()
     subscription_reference = serializers.SerializerMethodField()
+    subscription_reference_obj = serializers.SerializerMethodField()
 
     def get_subscription_name(self, obj):
         if obj.subscription:
@@ -36,6 +37,9 @@ class SubscriptionTransactionSerializerPayment(serializers.ModelSerializer):
         return ''
 
     def get_subscription_reference(self, obj):
+        return obj.subscription.reference
+
+    def get_subscription_reference_obj(self, obj):
         if obj.subscription.reference == 'paypal':
             return PaypalSubscriptionSerializer(obj.subscription.paypal_subscription).data
         elif obj.subscription.reference == 'stripe':

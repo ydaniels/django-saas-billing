@@ -79,6 +79,8 @@ class StripeCustomer(models.Model):
             StripeSubscription.objects.update_or_create(subscription=subscription, defaults={'subscription_ref':  stripe_sub_obj.id })
             return subscription
 
+    def __str__(self):
+        return '{} {} {}'.format(self.id, self.user, self.customer_id)
 
 class StripeSubscriptionPlanCost(models.Model):
     cost = models.OneToOneField(PlanCost, on_delete=models.CASCADE, unique=True, related_name='stripe_plan_cost')
@@ -151,6 +153,10 @@ class StripeSubscription(models.Model):
 
     def activate(self):
         self.subscription.activate()
+
+    def __str__(self):
+        return '{}|{}|{}'.format(self.id, self.subscription, self.subscription_ref)
+
 
 
 class PaypalSubscriptionPlan(models.Model):
@@ -262,6 +268,8 @@ class PaypalSubscription(models.Model):
         paypal = get_paypal_client()
         return paypal.cancel_subscription(self.subscription_ref)
 
+    def __str__(self):
+        return '{}|{}|{}'.format(self.id, self.subscription, self.subscription_ref)
 
 class SubscriptionTransaction(BaseSubscriptionTransaction):
     cryptocurrency_payments = GenericRelation(CryptoCurrencyPayment)

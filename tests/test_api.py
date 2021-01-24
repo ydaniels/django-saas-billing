@@ -193,8 +193,6 @@ class BaseTest(APITestCase):
         sub_url = reverse('saas_billing:subscriptions-get_active_subscription')
         r = self.client.get(sub_url)
         self.assertIsNone(r.data)
-        transaction = subscription.transactions.all()[0]
-        self.assertEqual(float(transaction.amount), -98.56)
 
     def test_transaction_generated_for_expired_sub(self):
         basic_cost = self.create_plan_cost("Basic Plan", cost=100)

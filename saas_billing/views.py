@@ -98,7 +98,7 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
                 _logger.error(data)
                 return Response({})
             if event_type == 'BILLING.SUBSCRIPTION.ACTIVATED':
-                subscription.activate(no_multipe_subscription=True)
+                subscription.activate(no_multiple_subscription=True)
                 subscription.record_transaction(paid=True)
                 subscription.notify_activate()
             elif event_type == 'BILLING.SUBSCRIPTION.SUSPENDED':
@@ -147,7 +147,7 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
 
             if subscription_status == 'active' or subscription_status == 'trialing':
                 subscription.record_transaction(paid=True)
-                subscription.activate(no_multipe_subscription=True)
+                subscription.activate(no_multiple_subscription=True)
             elif subscription_status == 'incomplete':
                 subscription.notify_payment_error()
             elif subscription_status == 'trial_will_end':
@@ -210,13 +210,13 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
             else:
                 subscription.deactivate()
             subscription.notify_deactivate()
-        subscription = plan_cost.setup_user_subscription(request.user, active=False, no_multipe_subscription=True,
+        subscription = plan_cost.setup_user_subscription(request.user, active=False, no_multiple_subscription=True,
                                                          resuse=True)
         subscription.reference = crypto
         subscription.save()
         transaction = auto_activate_subscription(subscription, amount=cost)
         data = {'subscription': str(subscription.pk), 'transaction': str(transaction.pk), 'payment': None}
-        if transaction.amount <= 0:
+        if transaction.amount <= 0 or cost == 0:
             subscription.activate()
             subscription.notify_activate()
         if crypto:

@@ -248,7 +248,7 @@ class PaypalSubscriptionPlanCost(models.Model):
                                                          resuse=True)
         subscription.reference = 'paypal'
         subscription.save()
-        subscription.notify_new()
+        #subscription.notify_new()
         #subscription.record_transaction()
         obj, created = PaypalSubscription.objects.update_or_create(subscription=subscription, defaults={'subscription_ref': res['id'],'payment_link':subscription_link})
         _logger.debug("Created or updated subscription for paypal sub=%s created=%s obj=%s subscription=%s ",res['id'], created, obj, subscription)

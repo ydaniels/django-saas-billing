@@ -37,6 +37,9 @@ class SubscriptionTransactionSerializerPayment(serializers.ModelSerializer):
         return ''
 
     def get_subscription_reference(self, obj):
+        if not obj.subscription:
+            #All subscription should have refrence
+            return ''
         return obj.subscription.reference
 
     def get_subscription_reference_obj(self, obj):

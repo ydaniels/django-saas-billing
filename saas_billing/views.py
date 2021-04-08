@@ -104,7 +104,10 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
             elif event_type == 'BILLING.SUBSCRIPTION.SUSPENDED':
                 subscription.deactivate(activate_default=True)
                 subscription.notify_deactivate()
-            elif event_type == 'BILLING.SUBSCRIPTION.CANCELLED' or event_type == 'BILLING.SUBSCRIPTION.DELETED':
+            elif event_type == 'BILLING.SUBSCRIPTION.CANCELLED':
+                #subscription.notify_deactivate()#Dont deactivate subscription if subscription is cancelled
+                pass
+            elif event_type == 'BILLING.SUBSCRIPTION.DELETED':
                 subscription.notify_deactivate()
                 subscription.deactivate(activate_default=True)
             elif event_type == 'BILLING.SUBSCRIPTION.EXPIRED':
@@ -160,9 +163,12 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
             elif subscription_status == 'expired':
                 subscription.deactivate(activate_default=True)
                 subscription.notify_expired()
-            elif subscription_status == 'canceled' or event.type == 'customer.subscription.deleted':
+            elif subscription_status == 'canceled':
+                #subscription.notify_deactivate()
+                pass
+            elif event.type == 'customer.subscription.deleted':
                 subscription.deactivate(activate_default=True)
-                subscription.notify_expired()
+                subscription.notify_deactivate()
         # elif 'invoice' in event.type:
         #     invoice = event.data.object  # contains a stripe.PaymentMethod
         #     stripe_costomer = self.get_local_customer(customer=invoice.customer)

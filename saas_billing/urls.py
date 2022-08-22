@@ -14,5 +14,3 @@ router.register('subscriptions', views.UserSubscriptionCrypto, basename='subscri
 urlpatterns = [
     path('billing/', include(router.urls)),
 ]
-
-urlpatterns += router.urls

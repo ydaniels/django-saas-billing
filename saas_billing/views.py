@@ -3,6 +3,7 @@ import stripe
 import logging
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.apps import apps
+from rest_framework.views import APIView
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST
@@ -71,7 +72,9 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
     def get_active_subscriptions(self, request):
         return Response(UserSubscriptionSerializer(self.request.user.subscriptions.all(), many=True).data)
 
-    @action(methods=['post'], url_name='paypal_gateway', detail=False, permission_classes=[AllowAny])
+
+class PaypalWebHook(APIView):
+    
     def paypal_gateway(self, request):
         event_type = request.data['event_type']
         payload = {
@@ -125,12 +128,16 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
                 pass
             return Response({})
 
+        
+        
+class StripeWebHook(APIView):
+
     def get_local_customer(self, customer):
         stripe_customer = StripeCustomer.objects.get(customer_id=customer)
         return stripe_customer
 
-    @action(methods=['post'], url_name='stripe_gateway', detail=False, permission_classes=[AllowAny])
-    def stripe_gateway(self, request):
+
+    def post(self, request):
         payload = request.data
         try:
             event = stripe.Event.construct_from(

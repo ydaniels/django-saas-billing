@@ -8,7 +8,7 @@ from setuptools import setup
 
 name = 'drf-saas-billing'
 package = 'saas_billing'
-description = 'A simple flexible app that provides subscription and billing for django apps with cryptocurrency support'
+description = 'The fastest django billing app that provides subscription and billing for django saas apps with paypal and stripe payment'
 url = 'https://github.com/ydaniels/drf-saas-billing'
 author = 'Yomi Daniel'
 author_email = 'yomid4all@gmail.com'

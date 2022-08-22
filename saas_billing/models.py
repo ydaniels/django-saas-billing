@@ -13,6 +13,7 @@ from saas_billing.app_settings import SETTINGS
 _logger = logging.getLogger(__name__)
 
 auth = SETTINGS['billing_auths']
+saas_models = SETTINGS['billing_models']
 
 stripe.api_key = auth['stripe']['LIVE_KEY']
 def get_paypal_client():
@@ -37,6 +38,40 @@ def auto_activate_subscription(subscription, amount, transaction_date=None):
         amount = 0
     transaction = subscription.record_transaction(amount=amount, transaction_date=transaction_date)
     return transaction
+
+
+
+
+class BillingUserSubscription(UserSubscription):
+    class Meta:
+        proxy = True
+
+    def deactivate_subscription(self):
+
+        if self.reference and self.reference in saas_models:
+            # deactivate on gateway
+            subscription_model = saas_models[self.reference]['subscription']
+            Model = apps.get_model(subscription_model)
+            obj = Model.objects.get(subscription=self)
+            res = obj.deactivate()
+            if res is True:
+                self.deactivate(activate_default=True)
+        else:
+            self.deactivate(activate_default=True)
+            self.notify_deactivate()
+
+
+class BillingPlanCost(PlanCost):
+    class Meta:
+        proxy = True
+
+    def setup_subscription(self, user, gateway):
+        cost_model_str = SETTINGS['billing_models'][gateway]['cost']
+        Model = apps.get_model(cost_model_str)
+        external_cost = Model.objects.get(cost=self)
+        data = external_cost.setup_subscription(user)
+        return data
+
 
 
 class StripeSubscriptionPlan(models.Model):

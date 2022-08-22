@@ -1,4 +1,4 @@
 site_name: drf-saas-billing
-site_description: A simple flexible app that provides subscription and billing for django apps with cryptocurrency support
+site_description: The fastest django billing app that provides subscription and billing for django saas apps with paypal and stripe payment
 repo_url: https://github.com/ydaniels/drf-saas-billing
 site_dir: html

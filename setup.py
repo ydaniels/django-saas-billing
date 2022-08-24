@@ -6,10 +6,10 @@ import sys
 from setuptools import setup
 
 
-name = 'drf-saas-billing'
+name = 'django-saas-billing'
 package = 'saas_billing'
 description = 'The fastest django billing app that provides subscription and billing for django saas apps with paypal and stripe payment'
-url = 'https://github.com/ydaniels/drf-saas-billing'
+url = 'https://github.com/ydaniels/django-saas-billing'
 author = 'Yomi Daniel'
 author_email = 'yomid4all@gmail.com'
 license = 'BSD'

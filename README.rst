@@ -6,7 +6,7 @@ drf-saas-billing
 Overview
 --------
 
-Simplest app you'll ever user that provides paypal, stripe and bitcoin payment for your  django drf saas app subscription and billings.
+Fastest app you'll ever user that provides paypal, stripe and bitcoin payment for your  django drf saas app subscription and billings.
 based on https://github.com/ydaniels/drf-django-flexible-subscriptions
 Requirements
 ------------
@@ -22,7 +22,7 @@ Install using ``pip``\ …
 
 .. code:: bash
 
-    $ pip install drf-saas-billing
+    $ pip install django-saas-billing
 
 Example
 -------
@@ -34,7 +34,7 @@ To use in
                         ...,
                         'rest_framework',
                         'subscriptions_api',
-                        'cryptocurrency_payment', #To accept bitcoin payment
+                        'cryptocurrency_payment',
                         'saas_billing'
                         ]
     SUBSCRIPTIONS_API_SUBSCRIPTIONTRANSACTION_MODEL = 'saas_billing.SubscriptionTransaction'
@@ -52,39 +52,135 @@ To use in
         }
     SAAS_BILLING_AUTH = {
             'stripe': {
-                'PUBLISHABLE_KEY': env.str('STRIPE_PUBLISHABLE_KEY'),
-                'LIVE_KEY': env.str('STRIPE_LIVE_KEY'),
-                'CANCEL_URL': env.str('PAYMENT_WEBHOOK_CANCEL_URL'),
-                'SUCCESS_URL': env.str('PAYMENT_WEBHOOK_SUCCESS_URL')
+                'PUBLISHABLE_KEY': 'Your Publishable Key',
+                'LIVE_KEY': 'You Live key can be test or live',
+                'CANCEL_URL': 'Where you want to redirect to if user cancels payment',
+                'SUCCESS_URL': ' Where to redirect to if subscription is successful'
             },
             'paypal': {
-                'CLIENT_ID': env.str('PAYPAL_CLIENT_ID'),
-                'CLIENT_SECRET': env.str('PAYPAL_CLIENT_SECRET'),
+                'CLIENT_ID': 'Your paypal rest client id',
+                'CLIENT_SECRET': 'Your paypal rest secret id',
                 'TOKEN': None,
-                'ENV': env.str('PAYPAL_CLIENT_ENV'),
-                'CANCEL_URL': env.str('PAYMENT_WEBHOOK_CANCEL_URL'),
-                'SUCCESS_URL': env.str('PAYMENT_WEBHOOK_SUCCESS_URL'),
-                'WEB_HOOK_ID': env.str('PAYPAL_WEB_HOOK_ID')
+                'ENV': 'live|development',
+                'CANCEL_URL':  'Where to redirect to if subscription fails',
+                'SUCCESS_URL':  'Where to redirect to if subscription is successful',
+                'WEB_HOOK_ID': 'Your paypal rest webhook id'
             }
     }
 
 *urls.py**
 
 .. code-block:: python
-    url(r'^api/', include('saas_billing.urls')),
+    path('', include('saas_billing.webhook_urls')) #Compulsory for webhook register url webhook on paypal and stripe
+    #create webhook url https://example.com/billing/stripe/webhook/
+    #https://example.com/billing/paypal/webhook/
+    path('api/', include('saas_billing.urls')), #optional to use drf api to manage subscriptions
 
 **How To Use**
+
+**Step 0**
+
+- Regsiter webhook urls on paypal and stripe
+
+  .. code-block:: python
+    https://yourdomain/billing/stripe/webhook/ #Please use ngrok on  localhost
+    https://yourdomain/billing/paypal/webhook/
+- You can use ngrok.io on localhost
 **Step 1**
-- Create Your Plans and PlanCost Using drf-django-flexible-subscriptions or from django admin
-** Step 2**
-- Generate Paypal and Stripe Plans and Pricing by using command any of the command below
+
+-  .. code-block:: python
+        python manage.py migrate
+- Create Your Plans and PlanCost  from django admin or shell or through api
+- .. code-block:: python
+        from subscription_api.models import SubscriptionPlan, PlanCost, MONTH
+        free_plan = SubscriptionPlan(plan_name='Free Plan', features='{"can_perform_action": false, "token_limit": 3}', group=already_created_group_obj)
+        free_plan.save()
+
+        pro_plan = SubscriptionPlan(plan_name='Pro Plan', features='{"can_perform_action": true, "token_limit": 10}', group=already_created_group_obj).save()
+        pro_plan.save()
+        PlanCost(plan=pro_plan, recurrence_unit=MONTH, cost=30).save() #30$/month
+
+- .. code-block:: python
+    #In your code or views you can use
+    if not user.subscription.plan.can_perform_action:
+               print('I am a free user')
+          else:
+               print('I am a pro user')
+     # features is a json dict that can be accessed from plan and group is normal django group that user will belong to
+
+
+     You should be able to implement most subscriptions access and permissions with the feautures and django groups
+
+
+**Step 2**
+
+
+- Generate Paypal and Stripe Plans and Pricing by using  command below
 .. code-block:: python
-   python manage.py billing gateway all # Create all plans for stripe and paypal
-   python manage.py billing gateway <paypal|stripe> # Create   for paypal or Stripe
+   python manage.py billing gateway all # Create all plans on stripe.com and paypal.com
+   python manage.py billing gateway <paypal|stripe> # Create   only on paypal.com or Stripe.com
    python manage.py billing gateway <paypal|stripe> --action <activate|deactivate> # Activate or Deactivate plans
 
+
+**Getting Active Subscriptions Of a User**
+
+.. code-block:: python
+    subscription = request.user.subscriptions.filter(active=True).first() #if you only allow a subscription per user
+    subscription.transactions.all() #returns all transaction payment of this subscriptions
+    request.user.subscriptions.filter(active=True).all() #for all subscriptions if you allow multiple subscription per user
+
+.. code-block:: python
+    transactions = request.user.subscription_transactions.all() #Returns all payment trasnsaction for this user
+
+**Building An Example Payment Transaction And Active Subscription View**
+
+.. code-block::python
+    #views.py
+    from saas_billing.models import SubscriptionTransaction #import this to show crypto payments
+    from subscriptions_api.base_models import BaseSubscriptionTransaction #else use this to only show paypal payment
+
+    class BillingView(ListView):
+    model = BaseSubscriptionTransaction
+    context_object_name = 'payment_transactions'
+    template_name = 'transactions.html'
+
+    def get_queryset(self):
+        return self.request.user.subscription_transactions.order_by('-date_transaction')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['active_subscription'] = self.request.user.subscriptions.filter(active=True).first()
+        return context
+
+.. code-block::html
+     <!-- transactions.html -->
+      <table class="table table-bordernone display" id="basic-1">
+                <thead>
+                  <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Subscription</th>
+                    <th scope="col">Amount</th>
+                    <th scope="col">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                {% for tran in payment_transactions %}
+                  <tr>
+                    <td>{{ tran.payment_transactions }}</td>
+                    <td>
+                      <div class="product-name">{{ tran.subscription_name }}
+                      </div>
+                    </td>
+                    <td>${{ tran.amount }}</td>
+                    <td>Paid</td>
+                  </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+
+
 **Step 3**
--- Api URL To use in frontend app
+-- Api URL To use in frontend app for drf users
 
 .. code-block:: python
     '/api/subscriptions/get_active_subscription/' # Returns active UserSubscription Object for the current logged in user

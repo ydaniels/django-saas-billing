@@ -9,7 +9,7 @@ from cryptocurrency_payment.models import CryptoCurrencyPayment
 from cryptocurrency_payment.models import create_new_payment
 from saas_billing.provider import PayPalClient
 from saas_billing.app_settings import SETTINGS
-
+from django.apps import apps
 _logger = logging.getLogger(__name__)
 
 auth = SETTINGS['billing_auths']

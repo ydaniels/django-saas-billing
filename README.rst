@@ -242,7 +242,7 @@ Tips Api URL To use in frontend app for drf users
 
 .. code-block:: python
 
-    '/api/subscriptions/plans/'  #Get all plans to display in frontend
+    '/api/subscriptions/subscription-plans/'  #Get all plans to display in frontend
     '/api/subscriptions/get_active_subscription/' # Returns active UserSubscription Object for the current logged in user
     '/api/subscriptions/${id}/unsubscribe_user/' # Unsubscribe user from subscription with ${id}
     '/api/transactions/' # Get payment transactions

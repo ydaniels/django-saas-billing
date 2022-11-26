@@ -26,7 +26,7 @@ Install using ``pip``\ …
 
     $ pip install django-saas-billing
 
-To use
+Setup
 -------
 
 .. code:: python
@@ -76,10 +76,13 @@ To use
     #https://yourdomain.com/billing/paypal/webhook/
     path('api/subscriptions/', include('subscriptions_api.urls')),
     path('api/', include('saas_billing.urls')), 
+    
 
-**How To Use**
+Usage
+-----
 
-**Step 0**
+Step 1
+------
 
 - Regsiter webhook urls on paypal and stripe
 
@@ -88,20 +91,25 @@ To use
     https://yourdomain/billing/paypal/webhook/
 
 
-**Step 1**
+Step 2
+-------
 
 .. code-block:: python
         python manage.py migrate
+        
 - Create Your Plans and PlanCost  from django admin 
+
 .. code-block:: python
         from subscription_api.models import SubscriptionPlan, PlanCost, MONTH
-        free_plan = SubscriptionPlan(plan_name='Free Plan', features='{"can_perform_action": false, "token_limit": 3}', group=already_created_group_obj)
+        free_plan = SubscriptionPlan(plan_name='Free Plan', features='{"can_perform_action": false, "token_limit": 3}', group=optional_already_created_group_obj_user_will_be_added_to)
         free_plan.save()
 
         pro_plan = SubscriptionPlan(plan_name='Pro Plan', features='{"can_perform_action": true, "token_limit": 10}', group=already_created_group_obj).save()
         pro_plan.save()
         PlanCost(plan=pro_plan, recurrence_unit=MONTH, cost=30).save() #30$/month
-
+ 
+Tips
+----
 .. code-block:: python
     #In your code or views you can use
     if not user.subscription.plan.can_perform_action:
@@ -111,10 +119,11 @@ To use
      # features is a json dict that can be accessed from plan and group is normal django group that user will belong to
 
 
-     You should be able to implement most subscriptions access and permissions with the feautures and django groups
+     # You should be able to implement most subscriptions access and permissions with the feautures and django groups
 
 
-**Step 2**
+Step 3
+------
 
 
 - Generate Paypal and Stripe Plans and Pricing by using  command below
@@ -124,8 +133,12 @@ To use
    python manage.py billing gateway <paypal|stripe> # Create   only on paypal.com or Stripe.com
    python manage.py billing gateway <paypal|stripe> --action <activate|deactivate> # Activate or Deactivate plans
 
+Tips
+-----
 
-**Getting Active Subscriptions Of a User**
+
+Getting Active Subscriptions Of a User
+------------------------------------------
 
 .. code-block:: python
     subscription = request.user.subscriptions.filter(active=True).first() #if you only allow a subscription per user
@@ -135,7 +148,8 @@ To use
 .. code-block:: python
     transactions = request.user.subscription_transactions.all() #Returns all payment trasnsaction for this user
 
-**Building A  Payment And Active Subscription View**
+Building A  Payment And Active Subscription View
+------------------------------------------------
 
 .. code-block:: python
     from saas_billing.models import SubscriptionTransaction #import this to show crypto payments
@@ -181,19 +195,13 @@ To use
               </table>
 
 
-**Step 3**
--- Api URL To use in frontend app for drf users
-
-.. code-block:: python
-    '/api/subscriptions/plans/'
-    '/api/subscriptions/get_active_subscription/' # Returns active UserSubscription Object for the current logged in user
-    '/api/subscriptions/${id}/unsubscribe_user/' # Unsubscribe user from subscription with ${id}
-    '/api/transactions/' # Get payment transactions
-    '/api/transactions/${id}/' # Get single payment transaction with ${id}
+Step 4
+--------
 
 
-**How To Subscribe A User to a Plan Cost**
--Send a post request with data { gateway: <stripe|payment>} to url below where ${id} is the created  plan cost id '/api/plan-costs/${id}/init_gateway_subscription/'
+How To Subscribe A User to a Plan Cost
+---------------------------------------
+-Send a post request with data { gateway: <stripe|payment>, quantity: 1 } to url below where ${id} is the created  plan cost id '/api/plan-costs/${id}/init_gateway_subscription/'
 
 - For paypal redirect user to payment_link value from returned data
 .. code-block:: javascript
@@ -207,7 +215,16 @@ To use
     return stripe.redirectToCheckout({ sessionId: post_return_data.session_id })
     }
 **Thats all you need to start accepting payment**
-**Extra API URL**
+
+Tips Api URL To use in frontend app for drf users
+------------------------------------------------
+
+.. code-block:: python
+    '/api/subscriptions/plans/'  #Get all plans to display in frontend
+    '/api/subscriptions/get_active_subscription/' # Returns active UserSubscription Object for the current logged in user
+    '/api/subscriptions/${id}/unsubscribe_user/' # Unsubscribe user from subscription with ${id}
+    '/api/transactions/' # Get payment transactions
+    '/api/transactions/${id}/' # Get single payment transaction with ${id}
 -
 
 Testing

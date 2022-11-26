@@ -30,6 +30,7 @@ Setup
 -------
 
 .. code:: python
+
     #    settings.py
     INSTALLED_APPS = [
                         ...,
@@ -71,6 +72,7 @@ Setup
 
 
 .. code-block:: python
+
     path('', include('saas_billing.webhook_urls')) #Compulsory for webhook register url webhook on paypal and stripe
     #create webhook url https://yourdomain.com/billing/stripe/webhook/
     #https://yourdomain.com/billing/paypal/webhook/
@@ -87,6 +89,7 @@ Step 1
 - Regsiter webhook urls on paypal and stripe
 
 .. code-block:: bash
+
     https://yourdomain/billing/stripe/webhook/ #Please use ngrok on  localhost
     https://yourdomain/billing/paypal/webhook/
 
@@ -95,11 +98,13 @@ Step 2
 -------
 
 .. code-block:: python
+
         python manage.py migrate
         
 - Create Your Plans and PlanCost  from django admin 
 
 .. code-block:: python
+
         from subscription_api.models import SubscriptionPlan, PlanCost, MONTH
         free_plan = SubscriptionPlan(plan_name='Free Plan', features='{"can_perform_action": false, "token_limit": 3}', group=optional_already_created_group_obj_user_will_be_added_to)
         free_plan.save()
@@ -111,6 +116,7 @@ Step 2
 Tips
 ----
 .. code-block:: python
+
     #In your code or views you can use
     if not user.subscription.plan.can_perform_action:
                print('I am a free user')
@@ -129,6 +135,7 @@ Step 3
 - Generate Paypal and Stripe Plans and Pricing by using  command below
 
 .. code-block:: python
+
    python manage.py billing gateway all # Create all plans on stripe.com and paypal.com
    python manage.py billing gateway <paypal|stripe> # Create   only on paypal.com or Stripe.com
    python manage.py billing gateway <paypal|stripe> --action <activate|deactivate> # Activate or Deactivate plans
@@ -141,17 +148,20 @@ Getting Active Subscriptions Of a User
 ------------------------------------------
 
 .. code-block:: python
+
     subscription = request.user.subscriptions.filter(active=True).first() #if you only allow a subscription per user
     subscription.transactions.all() #returns all transaction payment of this subscriptions
     request.user.subscriptions.filter(active=True).all() #for all subscriptions if you allow multiple subscription per user
 
 .. code-block:: python
+
     transactions = request.user.subscription_transactions.all() #Returns all payment trasnsaction for this user
 
 Building A  Payment And Active Subscription View
 ------------------------------------------------
 
 .. code-block:: python
+
     from saas_billing.models import SubscriptionTransaction #import this to show crypto payments
     from subscriptions_api.base_models import BaseSubscriptionTransaction # use this to only show paypal & stripe payment
 
@@ -169,6 +179,7 @@ Building A  Payment And Active Subscription View
               return context
 
 .. code-block:: html
+
      <!-- transactions.html -->
       <table class="table table-bordernone display" id="basic-1">
                 <thead>
@@ -198,28 +209,35 @@ Building A  Payment And Active Subscription View
 Step 4
 --------
 
-
 How To Subscribe A User to a Plan Cost
 ---------------------------------------
 -Send a post request with data { gateway: <stripe|payment>, quantity: 1 } to url below where ${id} is the created  plan cost id '/api/plan-costs/${id}/init_gateway_subscription/'
 
 - For paypal redirect user to payment_link value from returned data
 .. code-block:: javascript
+
    (post_return_data) => {
     window.open(post_return_data.payment_link, '_blank').focus();
     }
+    
+    
 - For stripe start session with session id returned from post requsest using stripe javascript sdk
+
 .. code-block:: javascript
+
    (post_return_data) => {
     var stripe = window.Stripe(YOUR_STRIPE_PUBLIC_KEY)
     return stripe.redirectToCheckout({ sessionId: post_return_data.session_id })
     }
+    
+    
 **Thats all you need to start accepting payment**
 
 Tips Api URL To use in frontend app for drf users
 ------------------------------------------------
 
 .. code-block:: python
+
     '/api/subscriptions/plans/'  #Get all plans to display in frontend
     '/api/subscriptions/get_active_subscription/' # Returns active UserSubscription Object for the current logged in user
     '/api/subscriptions/${id}/unsubscribe_user/' # Unsubscribe user from subscription with ${id}

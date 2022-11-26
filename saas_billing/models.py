@@ -113,6 +113,7 @@ class StripeCustomer(models.Model):
             subscription = cost.setup_user_subscription(self.user, active=False, no_multiple_subscription=True,
                                                         resuse=True)
             subscription.reference = 'stripe'
+            subscription.quantity = stripe_sub_obj.items.data[0].quantity
             subscription.save()
             StripeSubscription.objects.update_or_create(subscription=subscription, defaults={'subscription_ref':  stripe_sub_obj.id })
             return subscription

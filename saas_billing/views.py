@@ -225,7 +225,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
             subscription.notify_deactivate()
         subscription = plan_cost.setup_user_subscription(request.user, active=False, no_multiple_subscription=True,
                                                          resuse=True)
-        susbcription.quantity = request.data.get('quantity', 1)
+        subscription.quantity = request.data.get('quantity', 1)
         subscription.reference = crypto
         subscription.save()
         transaction = auto_activate_subscription(subscription, amount=cost)

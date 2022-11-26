@@ -65,11 +65,11 @@ class BillingPlanCost(PlanCost):
     class Meta:
         proxy = True
 
-    def setup_subscription(self, user, gateway):
+    def setup_subscription(self, user, gateway, quantity=1):
         cost_model_str = SETTINGS['billing_models'][gateway]['cost']
         Model = apps.get_model(cost_model_str)
         external_cost = Model.objects.get(cost=self)
-        data = external_cost.setup_subscription(user)
+        data = external_cost.setup_subscription(user, quantity=quantity)
         return data
 
 
@@ -156,7 +156,7 @@ class StripeSubscriptionPlanCost(models.Model):
             sc.save()
         return customer_id
 
-    def pre_process_subscription(self, user):
+    def pre_process_subscription(self, user, quantity=1):
         auth = SETTINGS['billing_auths']['stripe']
         customer = self.get_or_create_stripe_customer_id(user)
         session = stripe.checkout.Session.create(
@@ -166,15 +166,15 @@ class StripeSubscriptionPlanCost(models.Model):
             success_url=auth['SUCCESS_URL'],
             line_items=[{
                 'price': self.cost_ref,
-                'quantity': 1,
+                'quantity': quantity,
             }],
             allow_promotion_codes=True,
             payment_method_types=["card"]
         )
         return {'session_id': session.id, 'cost_id': self.cost_ref}
 
-    def setup_subscription(self, user):
-        return self.pre_process_subscription(user)
+    def setup_subscription(self, user, quantity=1):
+        return self.pre_process_subscription(user, quantity)
 
 
 class StripeSubscription(models.Model):
@@ -270,7 +270,7 @@ class PaypalSubscriptionPlanCost(models.Model):
         if self.cost_ref:
             return paypal.deactivate(self.cost_ref)
 
-    def setup_subscription(self, user):
+    def setup_subscription(self, user, quantity=1):
         paypal = get_paypal_client()
         res = paypal.create_subscription(self.cost_ref, user.email, user.first_name, user.last_name,
                                          return_url=auth['paypal']['SUCCESS_URL'],

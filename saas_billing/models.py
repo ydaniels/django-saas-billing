@@ -282,6 +282,7 @@ class PaypalSubscriptionPlanCost(models.Model):
         subscription = self.cost.setup_user_subscription(user, active=False, no_multiple_subscription=True,
                                                          resuse=True)
         subscription.reference = 'paypal'
+        subscription.quantity =  quantity
         subscription.save()
         #subscription.notify_new()
         #subscription.record_transaction()

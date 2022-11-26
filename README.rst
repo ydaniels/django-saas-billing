@@ -70,6 +70,23 @@ Setup
             }
     }
 
+    CRYPTOCURRENCY_PAYMENT = {
+    "BITCOIN": {
+        "CODE": "btc",
+        "BACKEND": "merchant_wallet.backends.btc.BitcoinBackend",
+        "FEE": 0.00,
+        "REFRESH_PRICE_AFTER_MINUTE": 15,
+        "REUSE_ADDRESS": False,
+        "ACTIVE": True,
+        "MASTER_PUBLIC_KEY": 'PUT_YOUR_WALLET_MASTER_PUBLIC_KEY',
+        "CANCEL_UNPAID_PAYMENT_HRS": 24,
+        "CREATE_NEW_UNDERPAID_PAYMENT": True,
+        "IGNORE_UNDERPAYMENT_AMOUNT": 10,
+        "IGNORE_CONFIRMED_BALANCE_WITHOUT_SAVED_HASH_MINS": 20,
+        "BALANCE_CONFIRMATION_NUM": 1,
+        "ALLOW_ANONYMOUS_PAYMENT": True,
+    }
+ }
 
 .. code-block:: python
 

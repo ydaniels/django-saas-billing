@@ -200,7 +200,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
     def subscribe_user_crypto(self, request, pk=None):
         plan_cost = self.get_object()
         # Get old subscription
-        cost = plan_cost.cost
+        cost = plan_cost.cost * request.data.get('quantity', 1)
         crypto = self.request.data.get('crypto')
         unpaid_count = CryptoCurrencyPayment.objects.filter(user=self.request.user).exclude(
             status=CryptoCurrencyPayment.PAYMENT_PAID).count()
@@ -225,6 +225,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
             subscription.notify_deactivate()
         subscription = plan_cost.setup_user_subscription(request.user, active=False, no_multiple_subscription=True,
                                                          resuse=True)
+        susbcription.quantity = request.data.get('quantity', 1)
         subscription.reference = crypto
         subscription.save()
         transaction = auto_activate_subscription(subscription, amount=cost)
@@ -245,7 +246,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         cost_model_str = SETTINGS['billing_models'][gateway]['cost']
         Model = apps.get_model(cost_model_str)
         external_cost = Model.objects.get(cost=cost)
-        data = external_cost.setup_subscription(request.user)
+        data = external_cost.setup_subscription(request.user, request.data.get('quantity', 1))
         return Response(data)
 
 

@@ -211,14 +211,18 @@ Step 4
 
 How To Subscribe A User to a Plan Cost
 ---------------------------------------
--Send a post request with data { gateway: <stripe|payment>, quantity: 1 } to url below where ${id} is the created  plan cost id '/api/plan-costs/${id}/init_gateway_subscription/'
+-Send a post request using ajax or axios with data { gateway: <stripe|paypal|bitcoin>, quantity: 1 } to url below where ${id} is the  plan cost id under subscriptions plans 
+
+.. code-block:: javascript
+     // post data { gateway: <stripe|paypal|bitcoin>, quantity: 1 } quantity allows use to use usage biling
+    '/api/plan-costs/${id}/init_gateway_subscription/'
 
 - For paypal redirect user to payment_link value from returned data
 .. code-block:: javascript
 
-   (post_return_data) => {
+   $.ajax({url: '/api/plan-costs/${id-of-cost}/init_gateway_subscription/', { gateway: 'paypal', quantity: 1 }}).then((post_return_data) => {
     window.open(post_return_data.payment_link, '_blank').focus();
-    }
+    })
     
     
 - For stripe start session with session id returned from post requsest using stripe javascript sdk

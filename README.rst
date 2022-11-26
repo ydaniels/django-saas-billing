@@ -11,9 +11,9 @@ based on https://github.com/ydaniels/drf-django-flexible-subscriptions
 Requirements
 ------------
 
--  Python (2.7, 3.3, 3.4)
--  Django (1.6, 1.7, 1.8)
--  Django REST Framework (2.4, 3.0, 3.1)
+-  Python (2.7, 3.3, 3.4+)
+-  Django (1.6, 1.7, 1.8+)
+-  Django REST Framework (2.4, 3.0, 3.1+)
 
 Installation
 ------------
@@ -27,7 +27,7 @@ Install using ``pip``\ …
 Example
 -------
 To use in
-   *settings.py*
+   settings.py
 
 .. code:: python
     INSTALLED_APPS = [
@@ -72,9 +72,10 @@ To use in
 
 .. code-block:: python
     path('', include('saas_billing.webhook_urls')) #Compulsory for webhook register url webhook on paypal and stripe
-    #create webhook url https://example.com/billing/stripe/webhook/
-    #https://example.com/billing/paypal/webhook/
-    path('api/', include('saas_billing.urls')), #optional to use drf api to manage subscriptions
+    #create webhook url https://yourdomain.com/billing/stripe/webhook/
+    #https://yourdomain.com/billing/paypal/webhook/
+    path('api/subscriptions/', include('subscriptions_api.urls')),
+    path('api/', include('saas_billing.urls')), 
 
 **How To Use**
 
@@ -90,7 +91,7 @@ To use in
 
 -  .. code-block:: python
         python manage.py migrate
-- Create Your Plans and PlanCost  from django admin or shell or through api
+- Create Your Plans and PlanCost  from django admin 
 - .. code-block:: python
         from subscription_api.models import SubscriptionPlan, PlanCost, MONTH
         free_plan = SubscriptionPlan(plan_name='Free Plan', features='{"can_perform_action": false, "token_limit": 3}', group=already_created_group_obj)

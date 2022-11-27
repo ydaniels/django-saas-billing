@@ -112,9 +112,10 @@ Step 1
     https://yourdomain/billing/stripe/webhook/ #Please use ngrok on  localhost
     https://yourdomain/billing/paypal/webhook/
 
-- Optional Register signal in apps.py to activate subscription when crypto payment gets paid
+- Register signal in apps.py for crypto payments to activate subscription when crypto payment gets paid
 
 .. code-block:: python
+
     #apps.py
     class MyAppConfig(AppConfig):
 

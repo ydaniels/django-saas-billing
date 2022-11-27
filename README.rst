@@ -6,7 +6,7 @@ drf-saas-billing
 Overview
 --------
 
-Fastest app you'll ever user that provides paypal, stripe and bitcoin payment for your  django drf saas app subscription and billings.
+Fastest django app you'll ever user that provides paypal, stripe and cryptocurrency ( bitcoin) payment for your  django drf saas app subscription and billings. supports normal, Flat rate: Good-better-best, usage billing
 based on https://github.com/ydaniels/drf-django-flexible-subscriptions
 
 
@@ -112,6 +112,15 @@ Step 1
     https://yourdomain/billing/stripe/webhook/ #Please use ngrok on  localhost
     https://yourdomain/billing/paypal/webhook/
 
+- Optional Register signal to activate subscription when crypto payment gets paid
+
+.. code-block:: pythin
+
+    class MyAppConfig(AppConfig):
+    ...
+
+    def ready(self):
+        import saas_billing.signals
 
 Step 2
 -------

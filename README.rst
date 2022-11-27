@@ -84,7 +84,9 @@ Setup
         "IGNORE_UNDERPAYMENT_AMOUNT": 10,
         "IGNORE_CONFIRMED_BALANCE_WITHOUT_SAVED_HASH_MINS": 20,
         "BALANCE_CONFIRMATION_NUM": 1,
-        "ALLOW_ANONYMOUS_PAYMENT": True,
+        "ALLOW_ANONYMOUS_PAYMENT": False,
+         "DERIVATION_PATH": "m/0",
+        "ADDRESS_TYPE": "p2wpkh"
     }
  }
 
@@ -128,7 +130,7 @@ Step 2
 
         pro_plan = SubscriptionPlan(plan_name='Pro Plan', features='{"can_perform_action": true, "token_limit": 10}', group=already_created_group_obj).save()
         pro_plan.save()
-        PlanCost(plan=pro_plan, recurrence_unit=MONTH, cost=30).save() #30$/month
+        PlanCost(plan=pro_plan, recurrence_unit=MONTH, cost=30, min_subscription_quantity=20).save() #30$/month #min_subscription_quantity user must subscribe upto quantity to use this cost
  
 Tips
 ----
@@ -228,7 +230,7 @@ Step 4
 
 How To Subscribe A User to a Plan Cost
 ---------------------------------------
--Send a post request using ajax or axios with data { gateway: <stripe|paypal|bitcoin>, quantity: 1 } to url below where ${id} is the  plan cost id under subscriptions plans 
+-Send a post request using ajax or axios with data { gateway: <stripe|paypal|bitcoin>, quantity: 1 } to url below where ${id} is the  plan cost id under subscriptions plans and  quantity is optional for usage pricing
 
 .. code-block:: javascript
      // post data { gateway: <stripe|paypal|bitcoin>, quantity: 1 } quantity allows use to use usage biling
@@ -252,7 +254,7 @@ How To Subscribe A User to a Plan Cost
     }
     
     
-**Thats all you need to start accepting payment**
+**Thats all you need to start accepting subscriptions, subscriptions are activated or deactivated automatically and notification are sent to users automatically**
 
 Tips Api URL To use in frontend app for drf users
 ------------------------------------------------

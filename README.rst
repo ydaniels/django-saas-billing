@@ -112,15 +112,14 @@ Step 1
     https://yourdomain/billing/stripe/webhook/ #Please use ngrok on  localhost
     https://yourdomain/billing/paypal/webhook/
 
-- Optional Register signal to activate subscription when crypto payment gets paid
+- Optional Register signal in apps.py to activate subscription when crypto payment gets paid
 
-.. code-block:: pythin
-
+.. code-block:: python
+    #apps.py
     class MyAppConfig(AppConfig):
-    ...
 
-    def ready(self):
-        import saas_billing.signals
+        def ready(self):
+            import saas_billing.signals
 
 Step 2
 -------

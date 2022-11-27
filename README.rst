@@ -89,7 +89,7 @@ Setup
         "ADDRESS_TYPE": "p2wpkh"
     }
  }
-
+    DFS_DEFAULT_PLAN_COST_ID = 'Optional Put plan cost id here for new user to be automatically subscribed to this plan or subscription to be downgraded here'
 .. code-block:: python
 
     path('', include('saas_billing.webhook_urls')) #Compulsory for webhook register url webhook on paypal and stripe

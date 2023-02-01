@@ -62,14 +62,14 @@ if sys.argv[-1] == 'publish':
     print("  git tag -a {0} -m 'version {0}'".format(version))
     print("  git push --tags")
     sys.exit()
-
-
+readme = open('README.rst').read()
 setup(
     name=name,
     version=version,
     url=url,
     license=license,
     description=description,
+    long_description=readme + '\n\n',
     author=author,
     author_email=author_email,
     packages=get_packages(package),

@@ -8,6 +8,7 @@ from saas_billing.models import auto_activate_subscription
 from saas_billing.app_settings import SETTINGS
 
 billing_models = SETTINGS['billing_models']
+saas_billing_settings = SETTINGS['saas_billing_settings']
 payment_references = [key for key in billing_models.keys()]
 
 _logger = logging.getLogger(__name__)
@@ -38,7 +39,7 @@ class Manager():
             transaction = auto_activate_subscription(subscription, amount=subscription.plan_cost.cost,
                                                      transaction_date=subscription.date_billing_next)
             if transaction.amount <= 0:
-                subscription.activate(subscription_date=subscription.date_billing_next, no_multiple_subscription=True)
+                subscription.activate(subscription_date=subscription.date_billing_next, no_multiple_subscription=saas_billing_settings['SAAS_BILLING_SETTINGS'])
                 subscription.notify_activate(auto=True)
                 _logger.info("Auto activating subscription %s for user %s for date %s",subscription, subscription.user, subscription.date_billing_next )
             else:

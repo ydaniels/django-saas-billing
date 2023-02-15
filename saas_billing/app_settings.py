@@ -28,6 +28,9 @@ SAAS_BILLING_AUTH = {
     }
 }
 
+SAAS_BILLING_SETTINGS = {
+    'NO_MULTIPLE_SUBSCRIPTION': True
+}
 
 def compile_settings():
     """Compiles and validates all package settings and defaults.
@@ -42,9 +45,11 @@ def compile_settings():
     saas_billing_auth = getattr(
         settings, 'SAAS_BILLING_AUTH', SAAS_BILLING_AUTH
     )
+    saas_settings = getattr(settings, 'SAAS_BILLING_SETTINGS')
     return {
         'billing_models': saas_billing_models,
-        'billing_auths': saas_billing_auth
+        'billing_auths': saas_billing_auth,
+        'saas_billing_settings' : saas_settings
     }
 
 

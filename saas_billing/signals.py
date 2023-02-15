@@ -12,7 +12,7 @@ from saas_billing.provider import PayPalClient
 from saas_billing.app_settings import SETTINGS
 
 auth = SETTINGS['billing_auths']
-
+saas_billing_settings = SETTINGS['saas_billing_settings']
 
 @receiver(post_save, sender=CryptoCurrencyPayment, dispatch_uid='update_user_subscription')
 def save_profile(sender, instance, **kwargs):
@@ -30,7 +30,7 @@ def save_profile(sender, instance, **kwargs):
         current_date = timezone.now()
         if transaction.date_transaction > current_date:
             current_date = transaction.date_transaction
-        subscription.activate(current_date,  no_multiple_subscription=True)
+        subscription.activate(current_date,  no_multiple_subscription=saas_billing_settings['SAAS_BILLING_SETTINGS'])
         subscription.notify_payment_success(transaction=instance)
         subscription.notify_activate()
 

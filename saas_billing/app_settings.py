@@ -45,7 +45,7 @@ def compile_settings():
     saas_billing_auth = getattr(
         settings, 'SAAS_BILLING_AUTH', SAAS_BILLING_AUTH
     )
-    saas_settings = getattr(settings, 'SAAS_BILLING_SETTINGS')
+    saas_settings = getattr(settings, 'SAAS_BILLING_SETTINGS', SAAS_BILLING_SETTINGS)
     return {
         'billing_models': saas_billing_models,
         'billing_auths': saas_billing_auth,

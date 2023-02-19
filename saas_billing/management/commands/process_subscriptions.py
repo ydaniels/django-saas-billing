@@ -39,7 +39,7 @@ class Manager():
             transaction = auto_activate_subscription(subscription, amount=subscription.plan_cost.cost,
                                                      transaction_date=subscription.date_billing_next)
             if transaction.amount <= 0:
-                subscription.activate(subscription_date=subscription.date_billing_next, no_multiple_subscription=saas_billing_settings['SAAS_BILLING_SETTINGS'])
+                subscription.activate(subscription_date=subscription.date_billing_next, no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'])
                 subscription.notify_activate(auto=True)
                 _logger.info("Auto activating subscription %s for user %s for date %s",subscription, subscription.user, subscription.date_billing_next )
             else:

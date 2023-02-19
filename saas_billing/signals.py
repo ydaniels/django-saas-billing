@@ -30,7 +30,7 @@ def save_profile(sender, instance, **kwargs):
         current_date = timezone.now()
         if transaction.date_transaction > current_date:
             current_date = transaction.date_transaction
-        subscription.activate(current_date,  no_multiple_subscription=saas_billing_settings['SAAS_BILLING_SETTINGS'])
+        subscription.activate(current_date,  no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'])
         subscription.notify_payment_success(transaction=instance)
         subscription.notify_activate()
 

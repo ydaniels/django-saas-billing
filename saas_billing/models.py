@@ -111,7 +111,7 @@ class StripeCustomer(models.Model):
         except StripeSubscription.DoesNotExist:
             cost_ref =  stripe_sub_obj['plan']['id']
             cost = StripeSubscriptionPlanCost.objects.get(cost_ref=cost_ref).cost
-            subscription = cost.setup_user_subscription(self.user, active=False, no_multiple_subscription=saas_billing_settings['SAAS_BILLING_SETTINGS'],
+            subscription = cost.setup_user_subscription(self.user, active=False, no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'],
                                                         resuse=True)
             subscription.reference = 'stripe'
             subscription.quantity = stripe_sub_obj.items.data[0].quantity
@@ -281,7 +281,7 @@ class PaypalSubscriptionPlanCost(models.Model):
         for link in res['links']:
             if link['rel'].lower() == 'approve':
                 subscription_link = link['href']
-        subscription = self.cost.setup_user_subscription(user, active=False, no_multiple_subscription=saas_billing_settings['SAAS_BILLING_SETTINGS'],
+        subscription = self.cost.setup_user_subscription(user, active=False, no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'],
                                                          resuse=True)
         subscription.reference = 'paypal'
         subscription.quantity =  quantity

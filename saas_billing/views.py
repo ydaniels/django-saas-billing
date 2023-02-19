@@ -102,7 +102,7 @@ class PaypalWebHook(APIView):
                 _logger.error(data)
                 return Response({})
             if event_type == 'BILLING.SUBSCRIPTION.ACTIVATED':
-                subscription.activate(no_multiple_subscription=saas_billing_settings['SAAS_BILLING_SETTINGS'])
+                subscription.activate(no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'])
                 subscription.record_transaction(paid=True)
                 subscription.notify_activate()
             elif event_type == 'BILLING.SUBSCRIPTION.SUSPENDED':
@@ -158,7 +158,7 @@ class StripeWebHook(APIView):
 
             if subscription_status == 'active' or subscription_status == 'trialing':
                 subscription.record_transaction(paid=True)
-                subscription.activate(no_multiple_subscription=saas_billing_settings['SAAS_BILLING_SETTINGS'])
+                subscription.activate(no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'])
             elif subscription_status == 'incomplete':
                 subscription.notify_payment_error()
             elif subscription_status == 'trial_will_end':
@@ -229,7 +229,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
                 subscription.deactivate()
             subscription.notify_deactivate()
         subscription = plan_cost.setup_user_subscription(request.user, active=False,
-                                                         no_multiple_subscription=saas_billing_settings['SAAS_BILLING_SETTINGS'],
+                                                         no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'],
                                                          resuse=True)
         subscription.quantity = qty
         subscription.reference = crypto

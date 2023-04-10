@@ -199,7 +199,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
 
     def get_extra_costs(self):
         extra_cost_ids = self.request.data.get('extra_costs', [])
-        costs = PlanCost.objects.filter(id__in==extra_cost_ids).all()
+        costs = PlanCost.objects.filter(id__in=extra_cost_ids).all()
         return costs
 
     def get_extra_costs_sum(self):

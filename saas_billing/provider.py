@@ -6,13 +6,14 @@ import requests
 
 class PayPalClient():
 
-    def __init__(self, key, secret, token=None, env='development'):
+    def __init__(self, key, secret, token=None, env='development', brand_name='Paypal'):
         if env != 'live':
             self.base_url = 'https://api.sandbox.paypal.com/v1'
         else:
             self.base_url = 'https://api.paypal.com/v1'
 
         self.s = requests.Session()
+        self.brand_name = brand_name
         if token:
             self.s.headers.update({'Authorization': 'Bearer %s' % token})
         else:
@@ -130,7 +131,7 @@ class PayPalClient():
                 "email_address": email
             },
             "application_context": {
-                "brand_name": "vendSmarter",
+                "brand_name": self.brand_name,
                 "locale": "en-US",
                 "shipping_preference": "SET_PROVIDED_ADDRESS",
                 "user_action": "SUBSCRIBE_NOW",

@@ -130,7 +130,7 @@ class PayPalClient():
                 "email_address": email
             },
             "application_context": {
-                "brand_name": "vendSmarter",
+                "brand_name": "",
                 "locale": "en-US",
                 "shipping_preference": "SET_PROVIDED_ADDRESS",
                 "user_action": "SUBSCRIBE_NOW",

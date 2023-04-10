@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST
 from rest_framework.decorators import action
 from subscriptions_api.views import PlanCostViewSet, UserSubscriptionViewSet
-from saas_billing.models import UserSubscription
+from saas_billing.models import UserSubscription, PlanCost
 from subscriptions_api.serializers import UserSubscriptionSerializer
 from cryptocurrency_payment.models import CryptoCurrencyPayment
 
@@ -197,6 +197,16 @@ class StripeWebHook(APIView):
 
 class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
 
+    def get_extra_costs(self):
+        extra_cost_ids = self.request.data.get('extra_costs', [])
+        costs = PlanCost.objects.filter(id__in==extra_cost_ids).all()
+        return costs
+
+    def get_extra_costs_sum(self):
+        extra_costs = self.get_extra_costs()
+        total_extra_costs = sum([cost.cost for cost in extra_costs if cost != plan_cost])
+        return total_extra_costs
+
     @action(methods=['post'], url_name='subscribe_user_crypto', detail=True, permission_classes=[IsAuthenticated])
     def subscribe_user_crypto(self, request, pk=None):
         plan_cost = self.get_object()
@@ -205,7 +215,8 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         if qty < plan_cost.min_subscription_quantity:
             return Response({'detail': 'Quantity must not be less than {} to subscribe to this plan'.format(plan_cost.min_subscription_quantity)},
                             status=HTTP_400_BAD_REQUEST)
-        cost = plan_cost.cost * qty
+
+        cost = (plan_cost.cost + self.get_extra_costs()) * qty
         crypto = self.request.data.get('crypto')
         unpaid_count = CryptoCurrencyPayment.objects.filter(user=self.request.user).exclude(
             status=CryptoCurrencyPayment.PAYMENT_PAID).count()
@@ -230,7 +241,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
             subscription.notify_deactivate()
         subscription = plan_cost.setup_user_subscription(request.user, active=False,
                                                          no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'],
-                                                         resuse=True)
+                                                         resuse=True, extra_costs=self.get_extra_costs())
         subscription.quantity = qty
         subscription.reference = crypto
         subscription.save()
@@ -253,10 +264,11 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         Model = apps.get_model(cost_model_str)
         external_cost = Model.objects.get(cost=cost)
         qty = request.data.get('quantity', 1)
+
         if qty <  cost.min_subscription_quantity:
             return Response({'detail': 'Quantity must not be less than {} to subscribe to this plan'.format(cost.min_subscription_quantity)},
                             status=HTTP_400_BAD_REQUEST)
-        data = external_cost.setup_subscription(request.user, qty)
+        data = external_cost.setup_subscription(request.user, qty, extra_costs=self.get_extra_costs())
         return Response(data)
 
 

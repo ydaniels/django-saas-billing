@@ -66,11 +66,11 @@ class BillingPlanCost(PlanCost):
     class Meta:
         proxy = True
 
-    def setup_subscription(self, user, gateway, quantity=1):
+    def setup_subscription(self, user, gateway, extra_costs=None, quantity=1):
         cost_model_str = SETTINGS['billing_models'][gateway]['cost']
         Model = apps.get_model(cost_model_str)
         external_cost = Model.objects.get(cost=self)
-        data = external_cost.setup_subscription(user, quantity=quantity)
+        data = external_cost.setup_subscription(user, quantity=quantity, extra_costs=extra_costs)
         return data
 
 
@@ -105,14 +105,22 @@ class StripeCustomer(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def extra_subscription_costs_refs(self, sub_obj):
+        price_refs = [item.price.id for item in sub_obj.items.data]
+        return price_refs
+
+
     def get_or_create_subscription(self, stripe_sub_obj):
         try:
             return StripeSubscription.objects.get(subscription_ref=stripe_sub_obj.id).subscription
         except StripeSubscription.DoesNotExist:
             cost_ref =  stripe_sub_obj['plan']['id']
             cost = StripeSubscriptionPlanCost.objects.get(cost_ref=cost_ref).cost
+            extra_cost_refs = self.extra_subscription_costs_refs(stripe_sub_obj)
+            extra_stripe_costs = StripeSubscriptionPlanCost.objects.filter(cost_ref__in=extra_cost_refs).exclude(cost_ref=cost_ref).all()
+            extra_obj_costs = [cost for cost in extra_stripe_costs]
             subscription = cost.setup_user_subscription(self.user, active=False, no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'],
-                                                        resuse=True)
+                                                        resuse=False, extra_costs=extra_obj_costs)
             subscription.reference = 'stripe'
             subscription.quantity = stripe_sub_obj.items.data[0].quantity
             subscription.save()
@@ -158,25 +166,38 @@ class StripeSubscriptionPlanCost(models.Model):
             sc.save()
         return customer_id
 
-    def pre_process_subscription(self, user, quantity=1):
+    def get_extra_costs_items(self, extra_costs):
+        items = []
+        for cost in extra_costs:
+            items.append({
+                'price': cost.stripe_plan_cost.cost_ref,
+                'quantity': quantity
+            })
+        return items
+
+    def pre_process_subscription(self, user, quantity=1, extra_costs=None):
         auth = SETTINGS['billing_auths']['stripe']
         customer = self.get_or_create_stripe_customer_id(user)
+        subscription_item = [{
+                'price': self.cost_ref,
+                'quantity': quantity,
+            }]
+
+        subscription_item.extend(self.get_extra_costs_items(extra_costs))
+
         session = stripe.checkout.Session.create(
             cancel_url=auth['CANCEL_URL'],
             mode='subscription',
             customer=customer,
             success_url=auth['SUCCESS_URL'],
-            line_items=[{
-                'price': self.cost_ref,
-                'quantity': quantity,
-            }],
+            line_items=subscription_item,
             allow_promotion_codes=True,
             payment_method_types=["card"]
         )
         return {'session_id': session.id, 'cost_id': self.cost_ref}
 
-    def setup_subscription(self, user, quantity=1):
-        return self.pre_process_subscription(user, quantity)
+    def setup_subscription(self, user, quantity=1, extra_costs=None):
+        return self.pre_process_subscription(user, quantity, extra_costs=extra_costs)
 
 
 class StripeSubscription(models.Model):
@@ -272,7 +293,7 @@ class PaypalSubscriptionPlanCost(models.Model):
         if self.cost_ref:
             return paypal.deactivate(self.cost_ref)
 
-    def setup_subscription(self, user, quantity=1):
+    def setup_subscription(self, user, quantity=1, extra_costs=None):
         paypal = get_paypal_client()
         res = paypal.create_subscription(self.cost_ref, user.email, user.first_name, user.last_name,
                                          return_url=auth['paypal']['SUCCESS_URL'],
@@ -282,7 +303,7 @@ class PaypalSubscriptionPlanCost(models.Model):
             if link['rel'].lower() == 'approve':
                 subscription_link = link['href']
         subscription = self.cost.setup_user_subscription(user, active=False, no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'],
-                                                         resuse=True)
+                                                         resuse=False)
         subscription.reference = 'paypal'
         subscription.quantity =  quantity
         subscription.save()

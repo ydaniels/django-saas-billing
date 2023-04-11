@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST
 from rest_framework.decorators import action
 from subscriptions_api.views import PlanCostViewSet, UserSubscriptionViewSet
+from subscriptions_api.models import SubscriptionPromo
 from saas_billing.models import UserSubscription, PlanCost
 from subscriptions_api.serializers import UserSubscriptionSerializer
 from cryptocurrency_payment.models import CryptoCurrencyPayment
@@ -197,6 +198,19 @@ class StripeWebHook(APIView):
 
 class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
 
+    def calculate_discount(self, amount):
+        code = self.request.data.get('promo_code')
+        if not code:
+            return amount
+        promo_obj = SubscriptionPromo.objects.filter(code=code, customer=self.request.user, active=True).first()
+        if not promo_obj:
+            promo_obj = SubscriptionPromo.objects.filter(code=code, active=True).first()
+        if not promo_obj:
+            return amount
+        if promo_obj.expires_at and promo_obj.expires_at < timezone.now():
+            return amount #promo as expire
+        return amount - promo_obj.calculate_discount(amount)
+
     def get_extra_costs(self):
         extra_cost_ids = self.request.data.get('extra_costs', [])
         costs = PlanCost.objects.filter(id__in=extra_cost_ids).all()
@@ -204,7 +218,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
 
     def get_extra_costs_sum(self):
         extra_costs = self.get_extra_costs()
-        total_extra_costs = sum([cost.cost for cost in extra_costs if cost != plan_cost])
+        total_extra_costs = sum([cost.cost for cost in extra_costs if cost != self.get_object()])
         return total_extra_costs
 
     @action(methods=['post'], url_name='subscribe_user_crypto', detail=True, permission_classes=[IsAuthenticated])
@@ -216,7 +230,8 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
             return Response({'detail': 'Quantity must not be less than {} to subscribe to this plan'.format(plan_cost.min_subscription_quantity)},
                             status=HTTP_400_BAD_REQUEST)
 
-        cost = (plan_cost.cost + self.get_extra_costs()) * qty
+        cost = (plan_cost.cost + self.get_extra_costs_sum()) * qty
+        cost = self.calculate_discount(cost)
         crypto = self.request.data.get('crypto')
         unpaid_count = CryptoCurrencyPayment.objects.filter(user=self.request.user).exclude(
             status=CryptoCurrencyPayment.PAYMENT_PAID).count()

@@ -43,6 +43,8 @@ class SubscriptionTransactionSerializerPayment(serializers.ModelSerializer):
         return obj.subscription.reference
 
     def get_subscription_reference_obj(self, obj):
+        if not obj:
+            return {}
         if obj.subscription.reference == 'paypal':
             return PaypalSubscriptionSerializer(obj.subscription.paypal_subscription).data
         elif obj.subscription.reference == 'stripe':

@@ -209,7 +209,10 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
             return amount
         if promo_obj.expires_at and promo_obj.expires_at < timezone.now():
             return amount #promo as expire
-        return amount - promo_obj.calculate_discount(amount)
+        bal =  amount - promo_obj.calculate_discount(amount)
+        if bal < 0:
+            bal = 0
+        return bal
 
     def get_extra_costs(self):
         extra_cost_ids = self.request.data.get('extra_costs', [])

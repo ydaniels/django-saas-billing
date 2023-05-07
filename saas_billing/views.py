@@ -204,7 +204,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
             return amount
         promo_obj = SubscriptionPromo.objects.filter(code=code, customer=self.request.user, active=True).first()
         if not promo_obj:
-            promo_obj = SubscriptionPromo.objects.filter(code=code, active=True).first()
+            promo_obj = SubscriptionPromo.objects.exclude(customer__isnull=False).filter(code=code, active=True).first()
         if not promo_obj:
             return amount
         if promo_obj.expires_at and promo_obj.expires_at < timezone.now():

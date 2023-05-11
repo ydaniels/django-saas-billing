@@ -6,6 +6,7 @@ from django.apps import apps
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
+from django.db.models import Q
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST
@@ -245,8 +246,8 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         cost = (plan_cost.cost + self.get_extra_costs_sum()) * qty
         cost = self.calculate_discount(cost)
         crypto = self.request.data.get('crypto')
-        unpaid_count = CryptoCurrencyPayment.objects.filter(user=self.request.user).exclude(
-            status=CryptoCurrencyPayment.PAYMENT_PAID).count()
+        unpaid_count = self.request.user.crypto_payments.exclude(
+            Q(status=CryptoCurrencyPayment.PAYMENT_PAID) | Q(status=CryptoCurrencyPayment.PAYMENT_CANCELLED)).count()
         if unpaid_count > 0:
             return Response({'detail': 'You cannot subscribe for a new plan if you have unpaid bitcoin transactions.'},
                             status=HTTP_400_BAD_REQUEST)

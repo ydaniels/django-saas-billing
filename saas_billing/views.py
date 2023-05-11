@@ -4,6 +4,7 @@ import logging
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.apps import apps
 from django.utils import timezone
+from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework.response import Response
@@ -43,6 +44,13 @@ class SubscriptionTransactionPaymentViewSet(ReadOnlyModelViewSet):
         serialized_payment = CryptoCurrencyPaymentSerializer(payment)
         data = serialized_payment.data
         return Response(data, status=HTTP_201_CREATED)
+
+    @action(methods=['post'], url_name='cancel_transaction', detail=True, permission_classes=[IsAuthenticated])
+    def cancel_transaction(self, request, pk=None):
+        transaction = get_object_or_404(SubscriptionTransaction, pk=pk, user=request.user)
+        transaction.cancel_transaction()
+        return Response({})
+
 
 
 class UserSubscriptionCrypto(UserSubscriptionViewSet):

@@ -346,3 +346,10 @@ class SubscriptionTransaction(BaseSubscriptionTransaction):
                                      payment_description=plan_cost.plan.plan_description,
                                      related_object=self, user=self.user)
         return payment
+
+    def cancel_transaction(self):
+        self.paid = False
+        if self.subscription:
+            self.subscription.deactivate()
+        self.cryptocurrency_payments.update(status=CryptoCurrencyPayment.PAYMENT_CANCELLED)
+        self.save()

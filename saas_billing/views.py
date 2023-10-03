@@ -269,7 +269,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
             subscription.notify_deactivate()
         subscription = plan_cost.setup_user_subscription(request.user, active=False,
                                                          no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'],
-                                                         resuse=False, extra_costs=self.get_extra_costs())
+                                                         resuse=saas_billing_settings['REUSE_PREVIOUS_SUBSCRIPTION'], extra_costs=self.get_extra_costs())
         subscription.quantity = qty
         subscription.reference = crypto
         subscription.save()

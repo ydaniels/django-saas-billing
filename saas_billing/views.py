@@ -242,8 +242,11 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         if qty < plan_cost.min_subscription_quantity:
             return Response({'detail': 'Quantity must not be less than {} to subscribe to this plan'.format(plan_cost.min_subscription_quantity)},
                             status=HTTP_400_BAD_REQUEST)
-
-        cost = (plan_cost.cost + self.get_extra_costs_sum()) * qty
+        multiply_extra_cost = saas_billing_settings['EXTRA_COST_MULTIPLY']
+        if multiply_extra_cost:
+            cost = (plan_cost.cost + self.get_extra_costs_sum()) * qty
+        else:
+            cost = (plan_cost.cost  * qty ) + self.get_extra_costs_sum()
         cost = self.calculate_discount(cost)
         crypto = self.request.data.get('crypto')
         unpaid_count = self.request.user.crypto_payments.exclude(

@@ -42,13 +42,14 @@ class PayPalClient():
 
     def create_or_update_product_plan(self, product_id, plan_id=None, name='', description=None, interval_unit='MONTH',
                                       interval_count=1, amount=0, currency='USD', include_trial=False,
-                                      trial_interval_unit="WEEK", trial_interval_count=1):
+                                      trial_interval_unit="WEEK", trial_interval_count=1, quantity_supported=False):
 
         url = '{}/billing/plans'.format(self.base_url)
         data = {
             "product_id": product_id,
             "name": name,
             "description": description,
+            "quantity_supported": quantity_supported,
             "billing_cycles": [
             ],
             "payment_preferences": {
@@ -117,11 +118,16 @@ class PayPalClient():
         return res.json()
 
     def create_subscription(self, plan_id, email, first_name='', last_name='', return_url=None, cancel_url=None,
-                            start_time=None):
+                            start_time=None, quantity=1, extra_cost=0):
         url = '{}/billing/subscriptions'.format(self.base_url)
         data = {
             "plan_id": plan_id,
             "start_time": start_time,
+            "quantity": quantity,
+            "shipping_amount": {
+                "currency_code": "USD",
+                "value": extra_cost
+            },
             "subscriber": {
                 "name": {
                     "given_name": first_name,

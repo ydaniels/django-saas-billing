@@ -166,7 +166,7 @@ class StripeSubscriptionPlanCost(models.Model):
             sc.save()
         return customer_id
 
-    def get_extra_costs_items(self, extra_costs):
+    def get_extra_costs_items(self, extra_costs, quantity):
         items = []
         for cost in extra_costs:
             items.append({
@@ -178,12 +178,13 @@ class StripeSubscriptionPlanCost(models.Model):
     def pre_process_subscription(self, user, quantity=1, extra_costs=None):
         auth = SETTINGS['billing_auths']['stripe']
         customer = self.get_or_create_stripe_customer_id(user)
+        multiply_extra_cost = saas_billing_settings['EXTRA_COST_MULTIPLY']
         subscription_item = [{
                 'price': self.cost_ref,
-                'quantity': quantity,
+                'quantity': quantity if multiply_extra_cost else  1,
             }]
 
-        subscription_item.extend(self.get_extra_costs_items(extra_costs))
+        subscription_item.extend(self.get_extra_costs_items(extra_costs, quantity))
 
         session = stripe.checkout.Session.create(
             cancel_url=auth['CANCEL_URL'],
@@ -275,7 +276,7 @@ class PaypalSubscriptionPlanCost(models.Model):
                                                        interval_count=self.cost.recurrence_period,
                                                        amount=self.cost.cost, currency="usd", include_trial=trial,
                                                        trial_interval_unit=trial_interval_unit,
-                                                       trial_interval_count=trial_interval_count)
+                                                       trial_interval_count=trial_interval_count, quantity_supported=self.cost.min_subscription_quantity > 1)
 
             self.cost_ref = res['id']
             self.save()
@@ -294,10 +295,15 @@ class PaypalSubscriptionPlanCost(models.Model):
             return paypal.deactivate(self.cost_ref)
 
     def setup_subscription(self, user, quantity=1, extra_costs=None):
+        extra_costs = extra_costs or []
+        total_extra_costs = sum([cost.cost for cost in extra_costs if cost != self.cost])
+        multiply_extra_cost = saas_billing_settings['EXTRA_COST_MULTIPLY']
+        if multiply_extra_cost:
+            total_extra_costs = total_extra_costs * quantity
         paypal = get_paypal_client()
         res = paypal.create_subscription(self.cost_ref, user.email, user.first_name, user.last_name,
                                          return_url=auth['paypal']['SUCCESS_URL'],
-                                         cancel_url=auth['paypal']['CANCEL_URL'])
+                                         cancel_url=auth['paypal']['CANCEL_URL'], quantity=quantity, extra_cost=total_extra_costs)
         subscription_link = None
         for link in res['links']:
             if link['rel'].lower() == 'approve':

@@ -31,6 +31,7 @@ SAAS_BILLING_AUTH = {
 SAAS_BILLING_SETTINGS = {
     'NO_MULTIPLE_SUBSCRIPTION': True,
     'REUSE_PREVIOUS_SUBSCRIPTION': False,
+    'EXTRA_COST_MULTIPLY': False,
 }
 
 def compile_settings():

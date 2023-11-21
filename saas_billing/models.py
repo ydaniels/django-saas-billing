@@ -185,7 +185,16 @@ class StripeSubscriptionPlanCost(models.Model):
             }]
 
         subscription_item.extend(self.get_extra_costs_items(extra_costs, quantity))
-
+        trial_data = {}
+        trial = auth['TRIAL_DAYS']
+        setup_price_id = auth['SETUP_PRICE_ID']
+        if setup_price_id:
+            subscription_item.append({
+                'price': setup_price_id,
+                'quantity': 1,
+            })
+        if trial:
+            trial_data['subscription_data']['trial_period_days'] = trial
         session = stripe.checkout.Session.create(
             cancel_url=auth['CANCEL_URL'],
             mode='subscription',
@@ -193,7 +202,8 @@ class StripeSubscriptionPlanCost(models.Model):
             success_url=auth['SUCCESS_URL'],
             line_items=subscription_item,
             allow_promotion_codes=True,
-            payment_method_types=["card"]
+            payment_method_types=["card"],
+            **trial_data
         )
         return {'session_id': session.id, 'cost_id': self.cost_ref}
 

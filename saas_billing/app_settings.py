@@ -18,7 +18,10 @@ SAAS_BILLING_AUTH = {
         'PUBLISHABLE_KEY': '',
         'LIVE_KEY': '',
         'CANCEL_URL': '',
-        'SUCCESS_URL': ''
+        'SUCCESS_URL': '',
+        'TRIAL_DAYS': 0,
+        'SETUP_PRICE_ID': None,
+
     },
     'paypal': {
         'CLIENT_ID': '',

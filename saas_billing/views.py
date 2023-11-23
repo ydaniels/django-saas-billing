@@ -229,9 +229,9 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         costs = PlanCost.objects.filter(id__in=extra_cost_ids).all()
         return costs
 
-    def get_extra_costs_sum(self):
+    def get_extra_costs_sum(self, qty):
         extra_costs = self.get_extra_costs()
-        total_extra_costs = sum([cost.cost for cost in extra_costs if cost != self.get_object()])
+        total_extra_costs = sum([cost.cost * qty if cost.multiply_base_cost_quantity else cost.cost for cost in extra_costs if cost != self.get_object()])
         return total_extra_costs
 
     @action(methods=['post'], url_name='subscribe_user_crypto', detail=True, permission_classes=[IsAuthenticated])
@@ -242,11 +242,10 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         if qty < plan_cost.min_subscription_quantity:
             return Response({'detail': 'Quantity must not be less than {} to subscribe to this plan'.format(plan_cost.min_subscription_quantity)},
                             status=HTTP_400_BAD_REQUEST)
-        multiply_extra_cost = saas_billing_settings['EXTRA_COST_MULTIPLY']
-        if multiply_extra_cost:
-            cost = (plan_cost.cost + self.get_extra_costs_sum()) * qty
-        else:
-            cost = (plan_cost.cost  * qty ) + self.get_extra_costs_sum()
+        #if multiply_extra_cost:
+        cost = (plan_cost.cost * qty) + self.get_extra_costs_sum(qty)
+        # else:
+        #     cost = (plan_cost.cost  * qty ) + self.get_extra_costs_sum()
         cost = self.calculate_discount(cost)
         crypto = self.request.data.get('crypto')
         unpaid_count = self.request.user.crypto_payments.exclude(

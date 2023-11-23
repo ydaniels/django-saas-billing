@@ -171,17 +171,17 @@ class StripeSubscriptionPlanCost(models.Model):
         for cost in extra_costs:
             items.append({
                 'price': cost.stripe_plan_cost.cost_ref,
-                'quantity': quantity
+                'quantity': quantity if cost.multiply_base_cost_quantity else 1
             })
         return items
 
     def pre_process_subscription(self, user, quantity=1, extra_costs=None):
         auth = SETTINGS['billing_auths']['stripe']
         customer = self.get_or_create_stripe_customer_id(user)
-        multiply_extra_cost = saas_billing_settings['EXTRA_COST_MULTIPLY']
+
         subscription_item = [{
                 'price': self.cost_ref,
-                'quantity': quantity if multiply_extra_cost else  1,
+                'quantity': quantity,
             }]
 
         subscription_item.extend(self.get_extra_costs_items(extra_costs, quantity))
@@ -306,10 +306,7 @@ class PaypalSubscriptionPlanCost(models.Model):
 
     def setup_subscription(self, user, quantity=1, extra_costs=None):
         extra_costs = extra_costs or []
-        total_extra_costs = sum([cost.cost for cost in extra_costs if cost != self.cost])
-        multiply_extra_cost = saas_billing_settings['EXTRA_COST_MULTIPLY']
-        if multiply_extra_cost:
-            total_extra_costs = total_extra_costs * quantity
+        total_extra_costs = sum([(cost.cost * quantity) if cost.multiply_base_cost_quantity else cost.cost for cost in extra_costs if cost != self.cost])
         paypal = get_paypal_client()
         res = paypal.create_subscription(self.cost_ref, user.email, user.first_name, user.last_name,
                                          return_url=auth['paypal']['SUCCESS_URL'],

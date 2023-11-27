@@ -33,7 +33,8 @@ def save_profile(sender, instance, **kwargs):
         subscription.activate(current_date, mark_transaction_paid=False,  no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'])
         subscription.notify_payment_success(transaction=instance)
         subscription.notify_activate()
-        transaction.update(paid=True)
+        transaction.paid = True
+        transaction.save()
 
 
 @receiver(pre_delete, sender=StripeSubscriptionPlan)

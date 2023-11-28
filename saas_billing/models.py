@@ -121,7 +121,7 @@ class StripeCustomer(models.Model):
             cost_ref = None
             cost = None
             qty = 1
-            if 'plan' in stripe_sub_obj:
+            if  stripe_sub_obj.get('plan')  :
                 cost_ref =  stripe_sub_obj['plan']['id']
                 cost = StripeSubscriptionPlanCost.objects.get(cost_ref=cost_ref).cost
 

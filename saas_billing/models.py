@@ -106,11 +106,11 @@ class StripeCustomer(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def extra_subscription_costs_refs(self, sub_obj):
-        price_refs = [item.price.id for item in sub_obj.items.data]
+        price_refs = [item.price.id for item in sub_obj['items']['data']]
         return price_refs
 
     def get_sub_quantities(self, sub_obj):
-        quantities = [item.quantity for item in sub_obj.items.data]
+        quantities = [item.quantity for item in sub_obj['items']['data']]
         return max(quantities)
 
 
@@ -127,13 +127,13 @@ class StripeCustomer(models.Model):
 
             extra_cost_refs = self.extra_subscription_costs_refs(stripe_sub_obj)
             extra_stripe_costs = StripeSubscriptionPlanCost.objects.filter(cost_ref__in=extra_cost_refs).exclude(cost_ref=cost_ref).all()
-            extra_obj_costs = [cost for cost in extra_stripe_costs]
+            extra_obj_costs = [cost.cost for cost in extra_stripe_costs]
             if not  cost:
-                main_cost = [cost for cost in extra_stripe_costs if cost.is_main == True]
+                main_cost = [cost.cost for cost in extra_stripe_costs if cost.cost.is_main == True]
                 if   main_cost:
                     cost = main_cost[0]
             if not cost:
-                cost = extra_obj_costs[0]
+                cost = extra_obj_costs[0].cost
 
             extra_obj_costs = [ct for ct in extra_obj_costs if ct.id != cost.id]
             subscription = cost.setup_user_subscription(self.user, active=False, no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'],

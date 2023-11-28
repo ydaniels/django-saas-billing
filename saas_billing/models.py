@@ -109,20 +109,37 @@ class StripeCustomer(models.Model):
         price_refs = [item.price.id for item in sub_obj.items.data]
         return price_refs
 
+    def get_sub_quantities(self, sub_obj):
+        quantities = [item.quantity for item in sub_obj.items.data]
+        return max(quantities)
+
 
     def get_or_create_subscription(self, stripe_sub_obj):
         try:
             return StripeSubscription.objects.get(subscription_ref=stripe_sub_obj.id).subscription
         except StripeSubscription.DoesNotExist:
-            cost_ref =  stripe_sub_obj['plan']['id']
-            cost = StripeSubscriptionPlanCost.objects.get(cost_ref=cost_ref).cost
+            cost_ref = None
+            cost = None
+            qty = 1
+            if 'plan' in stripe_sub_obj:
+                cost_ref =  stripe_sub_obj['plan']['id']
+                cost = StripeSubscriptionPlanCost.objects.get(cost_ref=cost_ref).cost
+
             extra_cost_refs = self.extra_subscription_costs_refs(stripe_sub_obj)
             extra_stripe_costs = StripeSubscriptionPlanCost.objects.filter(cost_ref__in=extra_cost_refs).exclude(cost_ref=cost_ref).all()
             extra_obj_costs = [cost for cost in extra_stripe_costs]
+            if not  cost:
+                main_cost = [cost for cost in extra_stripe_costs if cost.is_main == True]
+                if   main_cost:
+                    cost = main_cost[0]
+            if not cost:
+                cost = extra_obj_costs[0]
+
+            extra_obj_costs = [ct for ct in extra_obj_costs if ct.id != cost.id]
             subscription = cost.setup_user_subscription(self.user, active=False, no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'],
                                                         resuse=False, extra_costs=extra_obj_costs)
             subscription.reference = 'stripe'
-            subscription.quantity = stripe_sub_obj.items.data[0].quantity
+            subscription.quantity = self.get_sub_quantities(stripe_sub_obj)
             subscription.save()
             StripeSubscription.objects.update_or_create(subscription=subscription, defaults={'subscription_ref':  stripe_sub_obj.id })
             return subscription
@@ -185,13 +202,14 @@ class StripeSubscriptionPlanCost(models.Model):
             }]
 
         subscription_item.extend(self.get_extra_costs_items(extra_costs, quantity))
-        trial_data = {}
-        trial = auth['TRIAL_DAYS']
-        setup_price_id = auth['SETUP_PRICE_ID']
+        trial_data = { 'subscription_data': {} }
+        trial = auth.get('TRIAL_DAYS')
+        setup_price_id =  auth.get('SETUP_PRICE_ID')
         if setup_price_id:
             subscription_item.append({
                 'price': setup_price_id,
                 'quantity': 1,
+                'description': 'Setup'
             })
         if trial:
             trial_data['subscription_data']['trial_period_days'] = trial

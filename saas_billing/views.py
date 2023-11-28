@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from django.db.models import Q
 from rest_framework.viewsets import ReadOnlyModelViewSet
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST
 from rest_framework.decorators import action
@@ -169,7 +170,7 @@ class StripeWebHook(APIView):
 
             if subscription_status == 'active' or subscription_status == 'trialing':
                 subscription.record_transaction(paid=True)
-                subscription.activate(no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'])
+                subscription.activate(no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'], is_trialing=subscription_status == 'trialing')
             elif subscription_status == 'incomplete':
                 subscription.notify_payment_error()
             elif subscription_status == 'trial_will_end':
@@ -292,7 +293,11 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         gateway = self.request.data['gateway']
         cost_model_str = SETTINGS['billing_models'][gateway]['cost']
         Model = apps.get_model(cost_model_str)
-        external_cost = Model.objects.get(cost=cost)
+        try:
+            external_cost = Model.objects.get(cost=cost)
+        except ObjectDoesNotExist:
+            return Response({'detail': 'Please generate the product and prices for this cost using your gateway'},
+                            status=HTTP_400_BAD_REQUEST)
         qty = request.data.get('quantity', 1)
 
         if qty <  cost.min_subscription_quantity:

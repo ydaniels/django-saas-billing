@@ -141,7 +141,8 @@ class StripeCustomer(models.Model):
             subscription.reference = 'stripe'
             subscription.quantity = self.get_sub_quantities(stripe_sub_obj)
             subscription.save()
-            StripeSubscription.objects.update_or_create(subscription=subscription, defaults={'subscription_ref':  stripe_sub_obj.id })
+            StripeSubscription.objects.update_or_create(subscription=subscription,
+                                                        defaults={'subscription_ref': stripe_sub_obj.id})
             return subscription
 
     def __str__(self):
@@ -237,6 +238,7 @@ class StripeSubscription(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def deactivate(self):
+
         res = stripe.Subscription.delete(self.subscription_ref, invoice_now=True, prorate=True)
         if res.status == 'canceled':
             return True

@@ -42,15 +42,21 @@ class SubscriptionTransactionSerializerPayment(serializers.ModelSerializer):
             return ''
         return obj.subscription.reference
 
+    def get_subreference_data(self, obj):
+        try:
+            if  not obj.subscription:
+                return {}
+            if obj.subscription.reference == 'paypal':
+                return PaypalSubscriptionSerializer(obj.subscription.paypal_subscription).data
+            elif obj.subscription.reference == 'stripe':
+                return StripeSubscriptionSerializer(obj.subscription.stripe_subscription).data
+            else:
+                return {}
+        except ObjectDoesNotExist:
+            return {}
+
     def get_subscription_reference_obj(self, obj):
-        if  not obj.subscription:
-            return {}
-        if obj.subscription.reference == 'paypal':
-            return PaypalSubscriptionSerializer(obj.subscription.paypal_subscription).data
-        elif obj.subscription.reference == 'stripe':
-            return StripeSubscriptionSerializer(obj.subscription.stripe_subscription).data
-        else:
-            return {}
+        return self.get_subreference_data(obj)
 
     class Meta:
         model = SubscriptionTransaction

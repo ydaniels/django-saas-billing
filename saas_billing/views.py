@@ -166,6 +166,8 @@ class StripeWebHook(APIView):
             customer = data.customer
             stripe_costomer = self.get_local_customer(customer=customer)
             subscription = stripe_costomer.get_or_create_subscription(data)
+            if not subscription:
+                return Response({}, status=HTTP_400_BAD_REQUEST)
             subscription_status = data['status']
             if event.type == 'customer.subscription.deleted':
 
@@ -174,7 +176,10 @@ class StripeWebHook(APIView):
             #notify user of deactivation
             if subscription_status == 'active' or subscription_status == 'trialing':
                 subscription.record_transaction(paid=True)
-                subscription.activate(no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'], is_trialing=subscription_status == 'trialing')
+                if subscription.cancelled:
+                    _logger.error('Cannot reactivate a subscription that has been cancelled before for %s please start fresh', subscription.user)
+                else:
+                    subscription.activate(no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'], is_trialing=subscription_status == 'trialing')
             elif subscription_status == 'incomplete':
                 subscription.notify_payment_error()
             elif subscription_status == 'trial_will_end':

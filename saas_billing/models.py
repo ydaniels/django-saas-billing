@@ -2,6 +2,7 @@ import stripe
 import logging
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.db.utils import IntegrityError
 from django.contrib.contenttypes.fields import GenericRelation
 from subscriptions_api.base_models import BaseSubscriptionTransaction
 from subscriptions_api.models import SubscriptionPlan, PlanCost, UserSubscription
@@ -141,8 +142,11 @@ class StripeCustomer(models.Model):
             subscription.reference = 'stripe'
             subscription.quantity = self.get_sub_quantities(stripe_sub_obj)
             subscription.save()
-            StripeSubscription.objects.update_or_create(subscription=subscription,
+            try:
+                StripeSubscription.objects.update_or_create(subscription=subscription,
                                                         defaults={'subscription_ref': stripe_sub_obj.id})
+            except IntegrityError:
+                return None
             return subscription
 
     def __str__(self):

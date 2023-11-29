@@ -167,40 +167,30 @@ class StripeWebHook(APIView):
             stripe_costomer = self.get_local_customer(customer=customer)
             subscription = stripe_costomer.get_or_create_subscription(data)
             subscription_status = data['status']
+            if event.type == 'customer.subscription.deleted':
 
+                subscription.deactivate(activate_default=True)
+                #subscription.notify_deactivate()
+            #notify user of deactivation
             if subscription_status == 'active' or subscription_status == 'trialing':
                 subscription.record_transaction(paid=True)
                 subscription.activate(no_multiple_subscription=saas_billing_settings['NO_MULTIPLE_SUBSCRIPTION'], is_trialing=subscription_status == 'trialing')
             elif subscription_status == 'incomplete':
                 subscription.notify_payment_error()
             elif subscription_status == 'trial_will_end':
-                subscription.notify_due()
+                subscription.notify_overdue()
             elif subscription_status == 'incomplete_expired':
                 subscription.deactivate(activate_default=True)
                 subscription.notify_deactivate()
             elif subscription_status == 'past_due' or subscription_status == 'unpaid':
-                subscription.notify_due()
+                subscription.notify_overdue()
             elif subscription_status == 'expired':
                 subscription.deactivate(activate_default=True)
                 subscription.notify_expired()
             elif subscription_status == 'canceled':
-                #subscription.notify_deactivate()
-                pass
-            elif event.type == 'customer.subscription.deleted':
-                subscription.deactivate(activate_default=True)
                 subscription.notify_deactivate()
-        # elif 'invoice' in event.type:
-        #     invoice = event.data.object  # contains a stripe.PaymentMethod
-        #     stripe_costomer = self.get_local_customer(customer=invoice.customer)
-        #     subscription = stripe_costomer.get_or_create_subscription(request.user, invoice)
-        #     if event.type == 'invoice.paid':
-        #         subscription.notify_payment_success()
-        #     elif event.type == 'invoice.created':
-        #         subscription.notify_new()
-        #     elif event.type == 'invoice.upcoming':
-        #         subscription.notify_due()
-        #     elif event.type == 'invoice.payment_failed':
-        #         subscription.notify_payment_error()
+                pass
+
         else:
             return Response(status=HTTP_400_BAD_REQUEST)
 

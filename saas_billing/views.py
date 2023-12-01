@@ -301,10 +301,10 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         data = external_cost.setup_subscription(request.user, qty, extra_costs=self.get_extra_costs())
         return Response(data)
 
-    @action(methods=['posts'], url_name='filter_plancosts', detail=False, permission_classes=[IsAuthenticated])
+    @action(methods=['post'], url_name='filter_plancosts', detail=False, permission_classes=[IsAuthenticated])
     def filter_plancosts(self, request):
         plancosts = self.request.data['plancost_ids']
-        plancosts_objs = PlanCost.objects.filter(id__in=plancosts, user=request.user).all()
+        plancosts_objs = PlanCost.objects.filter(id__in=plancosts).all()
         plancost_data = [PlanCostSerializer(x).data for x in plancosts_objs]
         return Response(plancost_data)
 

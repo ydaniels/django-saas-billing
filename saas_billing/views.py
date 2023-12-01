@@ -15,7 +15,7 @@ from rest_framework.decorators import action
 from subscriptions_api.views import PlanCostViewSet, UserSubscriptionViewSet
 from subscriptions_api.models import SubscriptionPromo
 from saas_billing.models import UserSubscription, PlanCost
-from subscriptions_api.serializers import UserSubscriptionSerializer
+from subscriptions_api.serializers import UserSubscriptionSerializer, PlanCostSerializer
 from cryptocurrency_payment.models import CryptoCurrencyPayment
 
 from saas_billing.serializers import CryptoCurrencyPaymentSerializer, SubscriptionTransactionSerializerPayment
@@ -300,6 +300,13 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
                             status=HTTP_400_BAD_REQUEST)
         data = external_cost.setup_subscription(request.user, qty, extra_costs=self.get_extra_costs())
         return Response(data)
+
+    @action(methods=['posts'], url_name='filter_plancosts', detail=False, permission_classes=[IsAuthenticated])
+    def filter_plancosts(self, request):
+        plancosts = self.request.data['plancost_ids']
+        plancosts_objs = PlanCost.objects.filter(id__in=plancosts, user=request.user).all()
+        plancost_data = [PlanCostSerializer(x).data for x in plancosts_objs]
+        return Response(plancost_data)
 
 
 class CryptoCurrencyPaymentViewset(ReadOnlyModelViewSet):

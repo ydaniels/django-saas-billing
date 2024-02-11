@@ -83,7 +83,7 @@ class UserSubscriptionCrypto(UserSubscriptionViewSet):
 
     @action(methods=['get'], url_name='get_active_subscriptions', detail=False, permission_classes=[IsAuthenticated])
     def get_active_subscriptions(self, request):
-        return Response(UserSubscriptionSerializer(self.request.user.subscriptions.all(), many=True).data)
+        return Response(UserSubscriptionSerializer(self.request.user.subscriptions.filter(active=True).all(), many=True).data)
 
 
 class PaypalWebHook(APIView):
@@ -286,6 +286,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
     def init_gateway_subscription(self, request, pk=None):
         cost = self.get_object()
         gateway = self.request.data['gateway']
+        trial_first = self.request.data.get('trial_first')
         cost_model_str = SETTINGS['billing_models'][gateway]['cost']
         Model = apps.get_model(cost_model_str)
         try:
@@ -298,7 +299,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         if qty <  cost.min_subscription_quantity:
             return Response({'detail': 'Quantity must not be less than {} to subscribe to this plan'.format(cost.min_subscription_quantity)},
                             status=HTTP_400_BAD_REQUEST)
-        data = external_cost.setup_subscription(request.user, qty, extra_costs=self.get_extra_costs())
+        data = external_cost.setup_subscription(request.user, qty, extra_costs=self.get_extra_costs(), trial_first=trial_first)
         return Response(data)
 
     @action(methods=['post'], url_name='filter_plancosts', detail=False, permission_classes=[IsAuthenticated])

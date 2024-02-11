@@ -67,11 +67,11 @@ class BillingPlanCost(PlanCost):
     class Meta:
         proxy = True
 
-    def setup_subscription(self, user, gateway, extra_costs=None, quantity=1):
+    def setup_subscription(self, user, gateway, extra_costs=None, quantity=1,  trial_first=False):
         cost_model_str = SETTINGS['billing_models'][gateway]['cost']
         Model = apps.get_model(cost_model_str)
         external_cost = Model.objects.get(cost=self)
-        data = external_cost.setup_subscription(user, quantity=quantity, extra_costs=extra_costs)
+        data = external_cost.setup_subscription(user, quantity=quantity, extra_costs=extra_costs, trial_first=trial_first)
         return data
 
 
@@ -197,7 +197,7 @@ class StripeSubscriptionPlanCost(models.Model):
             })
         return items
 
-    def pre_process_subscription(self, user, quantity=1, extra_costs=None):
+    def pre_process_subscription(self, user, quantity=1, extra_costs=None, trial_first=False):
         auth = SETTINGS['billing_auths']['stripe']
         customer = self.get_or_create_stripe_customer_id(user)
 
@@ -216,7 +216,7 @@ class StripeSubscriptionPlanCost(models.Model):
                 'quantity': 1,
                 'description': 'Setup'
             })
-        if trial:
+        if trial_first and trial:
             trial_data['subscription_data']['trial_period_days'] = trial
         session = stripe.checkout.Session.create(
             cancel_url=auth['CANCEL_URL'],
@@ -230,8 +230,8 @@ class StripeSubscriptionPlanCost(models.Model):
         )
         return {'session_id': session.id, 'cost_id': self.cost_ref}
 
-    def setup_subscription(self, user, quantity=1, extra_costs=None):
-        return self.pre_process_subscription(user, quantity, extra_costs=extra_costs)
+    def setup_subscription(self, user, quantity=1, extra_costs=None, trial_first=False):
+        return self.pre_process_subscription(user, quantity, extra_costs=extra_costs, trial_first=trial_first)
 
 
 class StripeSubscription(models.Model):
@@ -328,7 +328,7 @@ class PaypalSubscriptionPlanCost(models.Model):
         if self.cost_ref:
             return paypal.deactivate(self.cost_ref)
 
-    def setup_subscription(self, user, quantity=1, extra_costs=None):
+    def setup_subscription(self, user, quantity=1, extra_costs=None, trial_first=False):
         extra_costs = extra_costs or []
         total_extra_costs = sum([(cost.cost * quantity) if cost.multiply_base_cost_quantity else cost.cost for cost in extra_costs if cost != self.cost])
         paypal = get_paypal_client()

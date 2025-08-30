@@ -202,10 +202,14 @@ class StripeSubscriptionPlanCost(models.Model):
             })
         return items
 
-    def pre_process_subscription(self, user, quantity=1, extra_costs=None, trial_first=False):
+    def pre_process_subscription(self, user, quantity=1, extra_costs=None, trial_first=False, metadata=None):
         auth = SETTINGS['billing_auths']['stripe']
+        metadata = metadata or {}
         customer = self.get_or_create_stripe_customer_id(user)
-
+        event_id = metadata.get('event_id')
+        success_url = auth['SUCCESS_URL']
+        if event_id :
+            success_url += '&event_id={}'.format(event_id)
         subscription_item = [{
                 'price': self.cost_ref,
                 'quantity': quantity,
@@ -227,16 +231,17 @@ class StripeSubscriptionPlanCost(models.Model):
             cancel_url=auth['CANCEL_URL'],
             mode='subscription',
             customer=customer,
-            success_url=auth['SUCCESS_URL'],
+            success_url=success_url,
             line_items=subscription_item,
             allow_promotion_codes=True,
             payment_method_types=["card"],
+            metadata=metadata,
             **trial_data
         )
         return {'session_id': session.id, 'cost_id': self.cost_ref}
 
-    def setup_subscription(self, user, quantity=1, extra_costs=None, trial_first=False):
-        return self.pre_process_subscription(user, quantity, extra_costs=extra_costs, trial_first=trial_first)
+    def setup_subscription(self, user, quantity=1, extra_costs=None, trial_first=False, metadata=None):
+        return self.pre_process_subscription(user, quantity, extra_costs=extra_costs, trial_first=trial_first, metadata=metadata)
 
 
 class StripeSubscription(models.Model):

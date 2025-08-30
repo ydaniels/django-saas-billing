@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.db.utils import IntegrityError
 from django.contrib.contenttypes.fields import GenericRelation
 from subscriptions_api.base_models import BaseSubscriptionTransaction
-from subscriptions_api.models import SubscriptionPlan, PlanCost, UserSubscription
+from subscriptions_api.models import SubscriptionPlan, PlanCost, UserSubscription, ONCE
 from cryptocurrency_payment.models import CryptoCurrencyPayment
 from cryptocurrency_payment.models import create_new_payment
 from saas_billing.provider import PayPalClient
@@ -163,7 +163,12 @@ class StripeSubscriptionPlanCost(models.Model):
             #Dont create plan with 0 cost they are free plan
             return
         if not self.cost_ref and self.cost.plan.stripe_subscription_plan.plan_ref:
-            res = stripe.Price.create(unit_amount_decimal=self.cost.cost * 100, currency="usd", nickname=str(self.cost),
+            if self.cost.recurrence_unit == ONCE:
+                res = stripe.Price.create(unit_amount_decimal=self.cost.cost * 100, currency="usd",
+                                          nickname=str(self.cost),
+                                          product=self.cost.plan.stripe_subscription_plan.plan_ref)
+            else:
+                res = stripe.Price.create(unit_amount_decimal=self.cost.cost * 100, currency="usd", nickname=str(self.cost),
                                       recurring={"interval": self.cost.get_recurrence_unit_display(),
                                                  'interval_count': self.cost.recurrence_period},
                                       product=self.cost.plan.stripe_subscription_plan.plan_ref)

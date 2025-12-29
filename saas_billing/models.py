@@ -67,11 +67,11 @@ class BillingPlanCost(PlanCost):
     class Meta:
         proxy = True
 
-    def setup_subscription(self, user, gateway, extra_costs=None, quantity=1,  trial_first=False):
+    def setup_subscription(self, user, gateway, extra_costs=None, quantity=1,  trial_first=False, host=None):
         cost_model_str = SETTINGS['billing_models'][gateway]['cost']
         Model = apps.get_model(cost_model_str)
         external_cost = Model.objects.get(cost=self)
-        data = external_cost.setup_subscription(user, quantity=quantity, extra_costs=extra_costs, trial_first=trial_first)
+        data = external_cost.setup_subscription(user, quantity=quantity, extra_costs=extra_costs, trial_first=trial_first, host=host)
         return data
 
 
@@ -202,12 +202,15 @@ class StripeSubscriptionPlanCost(models.Model):
             })
         return items
 
-    def pre_process_subscription(self, user, quantity=1, extra_costs=None, trial_first=False, metadata=None):
+    def pre_process_subscription(self, user, quantity=1, extra_costs=None, trial_first=False, metadata=None, host=None):
         auth = SETTINGS['billing_auths']['stripe']
+        host_auth = {}
+        if host and host in auth:
+            host_auth = auth[host]
         metadata = metadata or {}
         customer = self.get_or_create_stripe_customer_id(user)
         event_id = metadata.get('event_id')
-        success_url = auth['SUCCESS_URL']
+        success_url = host_auth.get('SUCCESS_URL') or auth['SUCCESS_URL']
         if event_id :
             success_url += '&event_id={}'.format(event_id)
         subscription_item = [{
@@ -217,8 +220,8 @@ class StripeSubscriptionPlanCost(models.Model):
 
         subscription_item.extend(self.get_extra_costs_items(extra_costs, quantity))
         trial_data = { 'subscription_data': {} }
-        trial = auth.get('TRIAL_DAYS')
-        setup_price_id =  auth.get('SETUP_PRICE_ID')
+        trial = host_auth.get('TRIAL_DAYS') or auth.get('TRIAL_DAYS')
+        setup_price_id =  host_auth.get('SETUP_PRICE_ID') or auth.get('SETUP_PRICE_ID')
         if setup_price_id:
             subscription_item.append({
                 'price': setup_price_id,
@@ -228,7 +231,7 @@ class StripeSubscriptionPlanCost(models.Model):
         if trial_first and trial:
             trial_data['subscription_data']['trial_period_days'] = trial
         session = stripe.checkout.Session.create(
-            cancel_url=auth['CANCEL_URL'],
+            cancel_url=host_auth.get('CANCEL_URL') or auth['CANCEL_URL'],
             mode='subscription',
             customer=customer,
             success_url=success_url,
@@ -240,8 +243,8 @@ class StripeSubscriptionPlanCost(models.Model):
         )
         return {'session_id': session.id, 'cost_id': self.cost_ref}
 
-    def setup_subscription(self, user, quantity=1, extra_costs=None, trial_first=False, metadata=None):
-        return self.pre_process_subscription(user, quantity, extra_costs=extra_costs, trial_first=trial_first, metadata=metadata)
+    def setup_subscription(self, user, quantity=1, extra_costs=None, trial_first=False, metadata=None, host=None):
+        return self.pre_process_subscription(user, quantity, extra_costs=extra_costs, trial_first=trial_first, metadata=metadata, host=host)
 
 
 class StripeSubscription(models.Model):

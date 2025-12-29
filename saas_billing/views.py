@@ -288,6 +288,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         gateway = self.request.data['gateway']
         metadata = self.request.data.get('metadata')
         trial_first = self.request.data.get('trial_first')
+        host = self.request.data.get('host')
         cost_model_str = SETTINGS['billing_models'][gateway]['cost']
         Model = apps.get_model(cost_model_str)
         try:
@@ -300,7 +301,7 @@ class PlanCostCryptoUserSubscriptionView(PlanCostViewSet):
         if qty <  cost.min_subscription_quantity:
             return Response({'detail': 'Quantity must not be less than {} to subscribe to this plan'.format(cost.min_subscription_quantity)},
                             status=HTTP_400_BAD_REQUEST)
-        data = external_cost.setup_subscription(request.user, qty, extra_costs=self.get_extra_costs(), trial_first=trial_first, metadata=metadata)
+        data = external_cost.setup_subscription(request.user, qty, extra_costs=self.get_extra_costs(), trial_first=trial_first, metadata=metadata, host=host)
         return Response(data)
 
     @action(methods=['post'], url_name='filter_plancosts', detail=False, permission_classes=[IsAuthenticated])

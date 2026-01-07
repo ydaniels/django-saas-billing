@@ -225,8 +225,7 @@ class StripeSubscriptionPlanCost(models.Model):
         if setup_price_id:
             subscription_item.append({
                 'price': setup_price_id,
-                'quantity': 1,
-                'description': 'Setup'
+                'quantity': 1
             })
         if trial_first and trial:
             trial_data['subscription_data']['trial_period_days'] = trial

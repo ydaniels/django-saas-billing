@@ -221,12 +221,15 @@ class StripeSubscriptionPlanCost(models.Model):
         subscription_item.extend(self.get_extra_costs_items(extra_costs, quantity))
         trial_data = { 'subscription_data': {} }
         trial = host_auth.get('TRIAL_DAYS') or auth.get('TRIAL_DAYS')
-        setup_price_id =  host_auth.get('SETUP_PRICE_ID') or auth.get('SETUP_PRICE_ID')
+        setup_price_id =  host_auth.get('SETUP_PRICE_ID')
+        if not setup_price_id and 'SETUP_PRICE_ID' not in host_auth:
+            setup_price_id = auth.get('SETUP_PRICE_ID')
         if setup_price_id:
             subscription_item.append({
                 'price': setup_price_id,
                 'quantity': 1
             })
+
         if trial_first and trial:
             trial_data['subscription_data']['trial_period_days'] = trial
         session = stripe.checkout.Session.create(

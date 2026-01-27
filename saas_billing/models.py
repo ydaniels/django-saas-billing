@@ -233,7 +233,7 @@ class StripeSubscriptionPlanCost(models.Model):
                 'price': setup_price_id,
                 'quantity': 1
             })
-
+        print('setup')
         if trial_first and trial:
             trial_data['subscription_data']['trial_period_days'] = trial
         session = stripe.checkout.Session.create(

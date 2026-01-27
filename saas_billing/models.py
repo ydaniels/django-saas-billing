@@ -201,7 +201,11 @@ class StripeSubscriptionPlanCost(models.Model):
                 'quantity': quantity if cost.multiply_base_cost_quantity else 1
             })
         return items
-
+    def get_payment_type(self, extra_costs):
+        payment_type = 'subscription'
+        if self.cost.recurrence_unit == ONCE:
+            payment_type = 'payment'
+        return payment_type
     def pre_process_subscription(self, user, quantity=1, extra_costs=None, trial_first=False, metadata=None, host=None):
         auth = SETTINGS['billing_auths']['stripe']
         host_auth = {}
@@ -234,7 +238,7 @@ class StripeSubscriptionPlanCost(models.Model):
             trial_data['subscription_data']['trial_period_days'] = trial
         session = stripe.checkout.Session.create(
             cancel_url=host_auth.get('CANCEL_URL') or auth['CANCEL_URL'],
-            mode='subscription',
+            mode=self.get_payment_type(extra_costs),#'subscription',
             customer=customer,
             success_url=success_url,
             line_items=subscription_item,
